@@ -1,0 +1,12 @@
+{
+  "name": "Loom",
+  "short_name": "Loom",
+  "description": "A local chat for branching thought",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1f1d24",
+  "theme_color": "#1f1d24",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

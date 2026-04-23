@@ -1,0 +1,23 @@
+[project]
+name = "loom"
+version = "0.1.0"
+description = "Local model chat wrapper with memory"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "httpx>=0.27.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.20.0",
+    "ddgs>=9.0.0",
+]
+
+[project.scripts]
+loom = "loom.main:cli"
+
+[tool.setuptools.packages.find]
+include = ["loom*"]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,439 @@
+{
+  "updated": "2026-04-22",
+  "tiers": [4, 6, 8, 12, 16, 24, 32],
+  "categories": [
+    {"id": "general", "label": "General"},
+    {"id": "coding", "label": "Coding"},
+    {"id": "creative", "label": "Creative"},
+    {"id": "reasoning", "label": "Reasoning"}
+  ],
+  "defs": {
+    "qwen3:4b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "qwen3:4b", "size": "2.6 GB"},
+        {"level": "Q6_K", "tag": "qwen3:4b-q6_K", "size": "3.3 GB"},
+        {"level": "Q8", "tag": "qwen3:4b-q8_0", "size": "4.3 GB"}
+      ]
+    },
+    "phi4-mini": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "phi4-mini", "size": "2.5 GB"},
+        {"level": "Q8", "tag": "phi4-mini:3.8b-q8_0", "size": "4.1 GB"}
+      ]
+    },
+    "gemma3:4b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "gemma3:4b", "size": "3.0 GB"},
+        {"level": "Q8", "tag": "gemma3:4b-q8_0", "size": "5.0 GB"}
+      ]
+    },
+    "qwen2.5-coder:3b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "qwen2.5-coder:3b", "size": "1.9 GB"},
+        {"level": "Q8", "tag": "qwen2.5-coder:3b-q8_0", "size": "3.2 GB"}
+      ]
+    },
+    "deepseek-r1:1.5b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "deepseek-r1:1.5b", "size": "1.1 GB"},
+        {"level": "Q8", "tag": "deepseek-r1:1.5b-q8_0", "size": "1.8 GB"}
+      ]
+    },
+    "qwen3:8b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "qwen3:8b", "size": "5.0 GB"},
+        {"level": "Q6_K", "tag": "qwen3:8b-q6_K", "size": "6.5 GB"},
+        {"level": "Q8", "tag": "qwen3:8b-q8_0", "size": "8.5 GB"}
+      ]
+    },
+    "llama3.1:8b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "llama3.1:8b", "size": "4.7 GB"},
+        {"level": "Q6_K", "tag": "llama3.1:8b-q6_K", "size": "6.0 GB"},
+        {"level": "Q8", "tag": "llama3.1:8b-q8_0", "size": "8.0 GB"}
+      ]
+    },
+    "qwen2.5-coder:7b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "qwen2.5-coder:7b", "size": "4.7 GB"},
+        {"level": "Q6_K", "tag": "qwen2.5-coder:7b-q6_K", "size": "6.0 GB"},
+        {"level": "Q8", "tag": "qwen2.5-coder:7b-q8_0", "size": "8.0 GB"}
+      ]
+    },
+    "deepseek-r1:7b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "deepseek-r1:7b", "size": "4.7 GB"},
+        {"level": "Q6_K", "tag": "deepseek-r1:7b-q6_K", "size": "6.0 GB"},
+        {"level": "Q8", "tag": "deepseek-r1:7b-q8_0", "size": "8.0 GB"}
+      ]
+    },
+    "mistral:7b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "mistral:7b", "size": "4.1 GB"},
+        {"level": "Q6_K", "tag": "mistral:7b-q6_K", "size": "5.3 GB"},
+        {"level": "Q8", "tag": "mistral:7b-q8_0", "size": "7.0 GB"}
+      ]
+    },
+    "mistral-nemo:12b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "mistral-nemo:12b", "size": "7.5 GB"},
+        {"level": "Q6_K", "tag": "mistral-nemo:12b-q6_K", "size": "10 GB"},
+        {"level": "Q8", "tag": "mistral-nemo:12b-q8_0", "size": "13 GB"}
+      ]
+    },
+    "qwen3:14b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "qwen3:14b", "size": "9.3 GB"},
+        {"level": "Q6_K", "tag": "qwen3:14b-q6_K", "size": "12 GB"},
+        {"level": "Q8", "tag": "qwen3:14b-q8_0", "size": "16 GB"}
+      ]
+    },
+    "qwen2.5-coder:14b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "qwen2.5-coder:14b", "size": "9.0 GB"},
+        {"level": "Q6_K", "tag": "qwen2.5-coder:14b-q6_K", "size": "12 GB"},
+        {"level": "Q8", "tag": "qwen2.5-coder:14b-q8_0", "size": "15 GB"}
+      ]
+    },
+    "deepseek-r1:14b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "deepseek-r1:14b", "size": "9.0 GB"},
+        {"level": "Q6_K", "tag": "deepseek-r1:14b-q6_K", "size": "12 GB"},
+        {"level": "Q8", "tag": "deepseek-r1:14b-q8_0", "size": "15 GB"}
+      ]
+    },
+    "deepseek-r1:32b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "deepseek-r1:32b", "size": "20 GB"},
+        {"level": "Q6_K", "tag": "deepseek-r1:32b-q6_K", "size": "26 GB"},
+        {"level": "Q8", "tag": "deepseek-r1:32b-q8_0", "size": "36 GB"}
+      ]
+    },
+    "devstral-small-2:24b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "devstral-small-2:24b", "size": "15 GB"},
+        {"level": "Q6_K", "tag": "devstral-small-2:24b-q6_K", "size": "19 GB"},
+        {"level": "Q8", "tag": "devstral-small-2:24b-q8_0", "size": "25 GB"}
+      ]
+    },
+    "qwen3.6:27b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "qwen3.6:27b", "size": "16 GB"},
+        {"level": "Q6_K", "tag": "qwen3.6:27b-q6_K", "size": "22 GB"},
+        {"level": "Q8", "tag": "qwen3.6:27b-q8_0", "size": "29 GB"}
+      ]
+    },
+    "glm-4.7-flash": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "glm-4.7-flash", "size": "18 GB"},
+        {"level": "Q6_K", "tag": "glm-4.7-flash:q6_K", "size": "24 GB"},
+        {"level": "Q8", "tag": "glm-4.7-flash:q8_0", "size": "30 GB"}
+      ]
+    },
+    "qwen3-coder:30b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "qwen3-coder:30b", "size": "19 GB"},
+        {"level": "Q6_K", "tag": "qwen3-coder:30b-q6_K", "size": "24 GB"},
+        {"level": "Q8", "tag": "qwen3-coder:30b-q8_0", "size": "32 GB"}
+      ]
+    },
+    "qwen3.6:35b-a3b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "qwen3.6:35b-a3b", "size": "24 GB"},
+        {"level": "Q6_K", "tag": "qwen3.6:35b-a3b-q6_K", "size": "30 GB"},
+        {"level": "Q8", "tag": "qwen3.6:35b-a3b-q8_0", "size": "38 GB"}
+      ]
+    },
+    "dolphin-phi": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "dolphin-phi", "size": "1.6 GB"},
+        {"level": "Q8", "tag": "dolphin-phi:2.7b-q8_0", "size": "2.9 GB"}
+      ]
+    },
+    "dolphin-mistral:7b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "dolphin-mistral", "size": "4.1 GB"},
+        {"level": "Q8", "tag": "dolphin-mistral:7b-v2.8-q8_0", "size": "7.0 GB"}
+      ]
+    },
+    "dolphin-llama3:8b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "dolphin-llama3:8b", "size": "4.7 GB"},
+        {"level": "Q8", "tag": "dolphin-llama3:8b-v2.9-q8_0", "size": "8.0 GB"}
+      ]
+    },
+    "wizard-vicuna-uncensored:7b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "wizard-vicuna-uncensored:7b", "size": "4.1 GB"},
+        {"level": "Q8", "tag": "wizard-vicuna-uncensored:7b-q8_0", "size": "7.0 GB"}
+      ]
+    },
+    "wizard-vicuna-uncensored:13b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "wizard-vicuna-uncensored:13b", "size": "7.4 GB"},
+        {"level": "Q8", "tag": "wizard-vicuna-uncensored:13b-q8_0", "size": "13 GB"}
+      ]
+    },
+    "dolphin-mixtral:8x7b": {
+      "quants": [
+        {"level": "Q4_K_M", "tag": "dolphin-mixtral:8x7b", "size": "26 GB"}
+      ]
+    }
+  },
+  "models": {
+    "4": {
+      "general": [
+        {"ref": "qwen3:4b", "rec": 0, "why": "Strongest 4B model \u2014 thinking mode for harder questions"},
+        {"ref": "phi4-mini", "rec": 0, "why": "Beats GPT-4o on MATH and graduate-level science"},
+        {"ref": "gemma3:4b", "rec": 0, "why": "Google\u2019s efficient model, solid instruction following"}
+      ],
+      "coding": [
+        {"ref": "qwen3:4b", "rec": 0, "why": "Best small coding model with thinking mode"},
+        {"ref": "qwen2.5-coder:3b", "rec": 0, "why": "Purpose-built for code at tiny size"},
+        {"ref": "phi4-mini", "rec": 0, "why": "Strong code benchmarks relative to size"}
+      ],
+      "creative": [
+        {"ref": "qwen3:4b", "rec": 0, "why": "Most versatile small model for creative work"},
+        {"ref": "gemma3:4b", "rec": 0, "why": "Good instruction following for creative tasks"},
+        {"ref": "phi4-mini", "rec": 0, "why": "Compact but surprisingly capable prose"}
+      ],
+      "reasoning": [
+        {"ref": "qwen3:4b", "rec": 0, "why": "Thinking mode enables chain-of-thought reasoning"},
+        {"ref": "deepseek-r1:1.5b", "rec": 0, "why": "Dedicated reasoning model, fits anywhere"},
+        {"ref": "phi4-mini", "rec": 0, "why": "Exceptional math and science for its size"}
+      ]
+    },
+    "6": {
+      "general": [
+        {"ref": "qwen3:8b", "rec": 0, "why": "Best 8B model \u2014 thinking mode, multilingual, versatile"},
+        {"ref": "llama3.1:8b", "rec": 0, "why": "Meta\u2019s workhorse, broad capabilities"},
+        {"ref": "gemma3:4b", "rec": 0, "why": "Leaves room for large context, strong quality"}
+      ],
+      "coding": [
+        {"ref": "qwen3:8b", "rec": 0, "why": "Top HumanEval scores in the 8B class"},
+        {"ref": "qwen2.5-coder:7b", "rec": 0, "why": "Purpose-built code model, strong completions"},
+        {"ref": "llama3.1:8b", "rec": 0, "why": "Solid all-around including code tasks"}
+      ],
+      "creative": [
+        {"ref": "llama3.1:8b", "rec": 0, "why": "Best prose quality at this size"},
+        {"ref": "qwen3:8b", "rec": 0, "why": "Versatile creative output with thinking depth"},
+        {"ref": "mistral:7b", "rec": 0, "why": "Natural, flowing text \u2014 great for dialogue"}
+      ],
+      "reasoning": [
+        {"ref": "qwen3:8b", "rec": 0, "why": "Thinking mode for deep chain-of-thought"},
+        {"ref": "deepseek-r1:7b", "rec": 0, "why": "Dedicated reasoning, punches above its weight"},
+        {"ref": "phi4-mini", "rec": 1, "why": "Strong math/logic \u2014 room for Q8 at this tier"}
+      ]
+    },
+    "8": {
+      "general": [
+        {"ref": "mistral-nemo:12b", "rec": 0, "why": "12B quality jump in 7.5 GB \u2014 great conversationalist"},
+        {"ref": "qwen3:8b", "rec": 1, "why": "Q6 upgrade \u2014 better quality with room to spare"},
+        {"ref": "llama3.1:8b", "rec": 1, "why": "Q6 fits easily \u2014 proven reliable all-around"}
+      ],
+      "coding": [
+        {"ref": "mistral-nemo:12b", "rec": 0, "why": "12B brings noticeable code quality improvement"},
+        {"ref": "qwen2.5-coder:7b", "rec": 1, "why": "Q6 upgrade \u2014 purpose-built code model"},
+        {"ref": "qwen3:8b", "rec": 1, "why": "Q6 with thinking mode for harder problems"}
+      ],
+      "creative": [
+        {"ref": "mistral-nemo:12b", "rec": 0, "why": "12B excels at prose, nuance, and tone"},
+        {"ref": "llama3.1:8b", "rec": 1, "why": "Q6 brings noticeably richer prose"},
+        {"ref": "qwen3:8b", "rec": 1, "why": "Q6 with thinking for creative depth"}
+      ],
+      "reasoning": [
+        {"ref": "qwen3:8b", "rec": 1, "why": "Q6 thinking mode \u2014 best reasoning at this tier"},
+        {"ref": "deepseek-r1:7b", "rec": 1, "why": "Q6 dedicated reasoning, stronger than Q4"},
+        {"ref": "mistral-nemo:12b", "rec": 0, "why": "12B improves logical coherence and depth"}
+      ]
+    },
+    "12": {
+      "general": [
+        {"ref": "qwen3:14b", "rec": 0, "why": "Major quality jump \u2014 thinking mode shines at 14B"},
+        {"ref": "mistral-nemo:12b", "rec": 1, "why": "Q6 upgrade \u2014 room for large context alongside"},
+        {"ref": "qwen3:8b", "rec": 2, "why": "Q8 near-lossless \u2014 fastest option, excellent quality"}
+      ],
+      "coding": [
+        {"ref": "qwen2.5-coder:14b", "rec": 0, "why": "Best dedicated code model at this tier"},
+        {"ref": "qwen3:14b", "rec": 0, "why": "Strong coding with thinking mode"},
+        {"ref": "deepseek-r1:14b", "rec": 0, "why": "Reasons through complex code problems"}
+      ],
+      "creative": [
+        {"ref": "qwen3:14b", "rec": 0, "why": "14B brings richer, more nuanced output"},
+        {"ref": "mistral-nemo:12b", "rec": 1, "why": "Q6 prose quality with room for context"},
+        {"ref": "llama3.1:8b", "rec": 2, "why": "Q8 near-lossless prose, very fast"}
+      ],
+      "reasoning": [
+        {"ref": "deepseek-r1:14b", "rec": 0, "why": "Purpose-built reasoning at 14B \u2014 best in class"},
+        {"ref": "qwen3:14b", "rec": 0, "why": "Thinking mode strong on math and logic"},
+        {"ref": "qwen3:8b", "rec": 2, "why": "Q8 thinking mode \u2014 fastest deep reasoning"}
+      ]
+    },
+    "16": {
+      "general": [
+        {"ref": "devstral-small-2:24b", "rec": 0, "why": "24B model \u2014 noticeable depth over 14B class"},
+        {"ref": "qwen3:14b", "rec": 1, "why": "Q6 upgrade \u2014 proven quality with room for context"},
+        {"ref": "mistral-nemo:12b", "rec": 2, "why": "Q8 near-lossless \u2014 fast with plenty of headroom"}
+      ],
+      "coding": [
+        {"ref": "devstral-small-2:24b", "rec": 0, "why": "Purpose-built for agentic coding and multi-file edits"},
+        {"ref": "qwen2.5-coder:14b", "rec": 1, "why": "Q6 dedicated code model with room for context"},
+        {"ref": "qwen3:14b", "rec": 1, "why": "Q6 with thinking mode for harder code problems"}
+      ],
+      "creative": [
+        {"ref": "qwen3:14b", "rec": 1, "why": "Q6 brings noticeably richer creative output"},
+        {"ref": "mistral-nemo:12b", "rec": 2, "why": "Q8 near-lossless \u2014 best prose at this tier"},
+        {"ref": "llama3.1:8b", "rec": 2, "why": "Q8 proven prose quality at maximum speed"}
+      ],
+      "reasoning": [
+        {"ref": "deepseek-r1:14b", "rec": 1, "why": "Q6 reasoning model \u2014 meaningful quality uplift"},
+        {"ref": "qwen3:14b", "rec": 1, "why": "Q6 thinking mode with room for deep context"},
+        {"ref": "devstral-small-2:24b", "rec": 0, "why": "24B improves complex analytical tasks"}
+      ]
+    },
+    "24": {
+      "general": [
+        {"ref": "qwen3.6:27b", "rec": 0, "why": "Brand new flagship \u2014 27B dense, best open model at this size"},
+        {"ref": "glm-4.7-flash", "rec": 0, "why": "30B MoE, fast inference, 200K context capability"},
+        {"ref": "qwen3:14b", "rec": 2, "why": "Q8 near-lossless \u2014 fastest option, excellent quality"}
+      ],
+      "coding": [
+        {"ref": "qwen3.6:27b", "rec": 0, "why": "Flagship coding \u2014 beats Qwen3.5-397B on benchmarks"},
+        {"ref": "qwen3-coder:30b", "rec": 0, "why": "Best local coding agent \u2014 SWE-Bench trained"},
+        {"ref": "devstral-small-2:24b", "rec": 1, "why": "Q6 agentic coding \u2014 higher quality than Q4"}
+      ],
+      "creative": [
+        {"ref": "qwen3.6:27b", "rec": 0, "why": "27B dense \u2014 richest creative output available"},
+        {"ref": "glm-4.7-flash", "rec": 0, "why": "Fast MoE for iterative creative workflows"},
+        {"ref": "qwen3.6:35b-a3b", "rec": 0, "why": "35B MoE \u2014 largest model, deepest potential"}
+      ],
+      "reasoning": [
+        {"ref": "glm-4.7-flash", "rec": 0, "why": "Best local reasoning \u2014 42.8% on Humanity\u2019s Last Exam"},
+        {"ref": "qwen3.6:27b", "rec": 0, "why": "Flagship reasoning capabilities"},
+        {"ref": "qwen3-coder:30b", "rec": 0, "why": "Strong technical reasoning and analysis"}
+      ]
+    },
+    "32": {
+      "general": [
+        {"ref": "qwen3.6:27b", "rec": 2, "why": "Q8 near-lossless flagship \u2014 best quality possible locally"},
+        {"ref": "deepseek-r1:32b", "rec": 1, "why": "Q6 32B reasoning model with room for deep context"},
+        {"ref": "qwen3:14b", "rec": 2, "why": "Q8 fastest option \u2014 massive headroom for context"}
+      ],
+      "coding": [
+        {"ref": "qwen3.6:27b", "rec": 2, "why": "Q8 flagship coding \u2014 near-full precision quality"},
+        {"ref": "qwen3-coder:30b", "rec": 1, "why": "Q6 best coding agent \u2014 SWE-Bench trained"},
+        {"ref": "devstral-small-2:24b", "rec": 2, "why": "Q8 near-lossless agentic coding"}
+      ],
+      "creative": [
+        {"ref": "qwen3.6:27b", "rec": 2, "why": "Q8 near-lossless \u2014 richest creative output available"},
+        {"ref": "deepseek-r1:32b", "rec": 1, "why": "Q6 32B model for deep creative reasoning"},
+        {"ref": "glm-4.7-flash", "rec": 1, "why": "Q6 fast MoE for iterative creative work"}
+      ],
+      "reasoning": [
+        {"ref": "deepseek-r1:32b", "rec": 1, "why": "Q6 32B dedicated reasoning \u2014 best at this tier"},
+        {"ref": "qwen3.6:27b", "rec": 2, "why": "Q8 flagship reasoning at near-full precision"},
+        {"ref": "glm-4.7-flash", "rec": 1, "why": "Q6 best reasoning benchmarks, MoE speed"}
+      ]
+    }
+  },
+  "abliterated": {
+    "4": {
+      "general": [
+        {"ref": "dolphin-phi", "rec": 0, "why": "Only abliterated option at this size — Phi-2 based, uncensored"}
+      ],
+      "creative": [
+        {"ref": "dolphin-phi", "rec": 0, "why": "Tiny but capable for uncensored creative writing"}
+      ]
+    },
+    "6": {
+      "general": [
+        {"ref": "dolphin-llama3:8b", "rec": 0, "why": "Uncensored Llama 3 — strongest abliterated 8B"},
+        {"ref": "dolphin-mistral:7b", "rec": 0, "why": "Eric Hartford’s uncensored Mistral fine-tune"},
+        {"ref": "wizard-vicuna-uncensored:7b", "rec": 0, "why": "Classic uncensored model, proven and reliable"}
+      ],
+      "coding": [
+        {"ref": "dolphin-llama3:8b", "rec": 0, "why": "Llama 3 base handles code well, uncensored"},
+        {"ref": "dolphin-mistral:7b", "rec": 0, "why": "Mistral base has solid code capabilities"}
+      ],
+      "creative": [
+        {"ref": "dolphin-mistral:7b", "rec": 0, "why": "Best uncensored prose at this tier"},
+        {"ref": "dolphin-llama3:8b", "rec": 0, "why": "Uncensored Llama 3 — versatile creative output"},
+        {"ref": "wizard-vicuna-uncensored:7b", "rec": 0, "why": "Classic Vicuna for unrestricted creative work"}
+      ]
+    },
+    "8": {
+      "general": [
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 uncensored Llama 3 — near-lossless quality"},
+        {"ref": "dolphin-mistral:7b", "rec": 1, "why": "Q8 uncensored Mistral — fast and unrestricted"},
+        {"ref": "wizard-vicuna-uncensored:7b", "rec": 1, "why": "Q8 classic uncensored, maximum quality"}
+      ],
+      "coding": [
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 Llama 3 base — best abliterated code at this tier"},
+        {"ref": "dolphin-mistral:7b", "rec": 1, "why": "Q8 Mistral — solid uncensored code generation"}
+      ],
+      "creative": [
+        {"ref": "dolphin-mistral:7b", "rec": 1, "why": "Q8 — richest uncensored prose at this size"},
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 uncensored Llama 3 for creative depth"},
+        {"ref": "wizard-vicuna-uncensored:7b", "rec": 1, "why": "Q8 Vicuna — unrestricted creative writing"}
+      ]
+    },
+    "12": {
+      "general": [
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 0, "why": "13B uncensored — major quality jump over 7B class"},
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 uncensored Llama 3 with room for large context"},
+        {"ref": "dolphin-mistral:7b", "rec": 1, "why": "Q8 fast uncensored option with lots of headroom"}
+      ],
+      "coding": [
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 Llama 3 — best abliterated code model available"},
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 0, "why": "13B handles code, larger context window"}
+      ],
+      "creative": [
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 0, "why": "13B brings noticeably richer uncensored output"},
+        {"ref": "dolphin-mistral:7b", "rec": 1, "why": "Q8 Mistral — proven uncensored prose quality"},
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 Llama 3 for unrestricted creative work"}
+      ]
+    },
+    "16": {
+      "general": [
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 1, "why": "Q8 13B — best uncensored quality at this tier"},
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 with massive headroom for context"},
+        {"ref": "dolphin-mistral:7b", "rec": 1, "why": "Q8 fast uncensored, leaves room for everything"}
+      ],
+      "coding": [
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 0, "why": "13B handles code reasonably — best abliterated option"},
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 Llama 3 base for uncensored code"}
+      ],
+      "creative": [
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 1, "why": "Q8 near-lossless — richest uncensored prose"},
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 Llama 3 for unrestricted creative depth"}
+      ]
+    },
+    "24": {
+      "general": [
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 1, "why": "Q8 13B with massive context headroom"},
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 fast option — loads of VRAM to spare"}
+      ],
+      "creative": [
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 1, "why": "Q8 — best uncensored creative available locally"},
+        {"ref": "dolphin-llama3:8b", "rec": 1, "why": "Q8 Llama 3 for unrestricted work"}
+      ]
+    },
+    "32": {
+      "general": [
+        {"ref": "dolphin-mixtral:8x7b", "rec": 0, "why": "MoE uncensored — largest abliterated model available"},
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 1, "why": "Q8 13B — fast and proven uncensored"}
+      ],
+      "coding": [
+        {"ref": "dolphin-mixtral:8x7b", "rec": 0, "why": "MoE handles code well — uncensored Mixtral"},
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 1, "why": "Q8 13B for unrestricted code generation"}
+      ],
+      "creative": [
+        {"ref": "dolphin-mixtral:8x7b", "rec": 0, "why": "MoE brings depth and nuance — fully uncensored"},
+        {"ref": "wizard-vicuna-uncensored:13b", "rec": 1, "why": "Q8 13B proven uncensored prose quality"}
+      ],
+      "reasoning": [
+        {"ref": "dolphin-mixtral:8x7b", "rec": 0, "why": "MoE architecture handles complex reasoning — uncensored"}
+      ]
+    }
+  }
+}

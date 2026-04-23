@@ -1,0 +1,36 @@
+# Loom Configuration
+# Copy to config.toml and edit to your needs.
+
+[model]
+# Ollama endpoint (uses native /api/chat — /v1 suffix accepted for compat)
+base_url = "http://127.0.0.1:11434"
+name = "qwen3:14b"
+temperature = 0.7
+max_tokens = 2048
+# top_p = 0.92
+# min_p = 0.05
+# rep_penalty = 1.12
+# thinking = false
+# timeout = 120.0
+
+[context]
+# Max messages kept in sliding window (oldest pruned first)
+max_recent_messages = 40
+
+[server]
+host = "0.0.0.0"
+port = 3000
+
+[persona]
+# Directory containing persona markdown files
+dir = "persona"
+
+# [database]
+# url = "sqlite+aiosqlite:///data/loom.db"
+
+# [tools]
+# Directories the model can read files from (scoped for safety)
+# allowed_read_dirs = []
+# Web search engine: "duckduckgo" (default, no setup), "searxng", "tavily"
+# web_search_engine = "duckduckgo"
+# web_search_result_count = 5

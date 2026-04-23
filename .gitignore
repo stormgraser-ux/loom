@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+config.toml
+data/
+persona/*.local.md
+.venv/
+venv/
+*.db
+.pytest_cache/
+CLAUDE.md
+handoff.md
