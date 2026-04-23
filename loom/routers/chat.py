@@ -101,6 +101,7 @@ async def chat_endpoint(request: Request, body: ChatRequest):
                     rep_penalty=config.rep_penalty,
                     thinking=config.thinking,
                     model=body.model,
+                    num_ctx=config.num_ctx,
                 ):
                     if msg_type == "content":
                         round_content.append(text)
@@ -224,6 +225,7 @@ async def regenerate_endpoint(request: Request, body: RegenerateRequest):
                     rep_penalty=config.rep_penalty,
                     thinking=config.thinking,
                     model=body.model,
+                    num_ctx=config.num_ctx,
                 ):
                     if msg_type == "content":
                         round_content.append(text)

@@ -18,6 +18,7 @@ function SettingsModal({ onClose, statusVisible, setStatusVisible, weaveMode, se
     base_url: config?.base_url || 'http://127.0.0.1:11434/v1',
     model: config?.model || '',
     thinking: config?.thinking ?? false,
+    num_ctx: config?.num_ctx || 32768,
     max_recent_messages: config?.max_recent_messages || 40,
     timeout: config?.timeout || 120,
   });
@@ -425,6 +426,7 @@ function ModelPanel({ cfg, setCfg, onRefreshModels }) {
           <span className="mono" style={{ fontSize: 11.5, color: cfg.thinking ? 'var(--candle)' : 'var(--fg-faint)' }}>{cfg.thinking ? 'on by default' : 'off'}</span>
         </div>
       </div>
+      <SliderRow label="Context window" hint="Tokens the model can see. Larger = slower." min={2048} max={131072} step={2048} value={cfg.num_ctx} onChange={v => set('num_ctx', v)} fmt={v => v >= 1024 ? `${(v / 1024).toFixed(0)}k` : String(v)} />
       <SliderRow label="Sliding window" hint="How many messages back to include from the trunk" min={4} max={120} step={2} value={cfg.max_recent_messages} onChange={v => set('max_recent_messages', v)} fmt={v => String(v)} />
       <SliderRow label="Timeout" hint="Seconds before aborting a stalled response" min={10} max={600} step={10} value={cfg.timeout} onChange={v => set('timeout', v)} fmt={v => `${v}s`} />
     </>

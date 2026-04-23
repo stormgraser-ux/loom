@@ -32,6 +32,7 @@ class LLMClient:
         rep_penalty: float | None = None,
         thinking: bool = False,
         model: str | None = None,
+        num_ctx: int | None = None,
     ) -> AsyncGenerator[tuple[str, str], None]:
         """Yield (type, text) tuples: type is 'content' or 'thinking'."""
         opts: dict = {
@@ -44,6 +45,8 @@ class LLMClient:
             opts["min_p"] = min_p
         if rep_penalty is not None:
             opts["repeat_penalty"] = rep_penalty
+        if num_ctx is not None:
+            opts["num_ctx"] = num_ctx
 
         payload: dict = {
             "model": model or self.model,

@@ -14,6 +14,7 @@ class Config:
     min_p: float = 0.05
     rep_penalty: float = 1.1
     thinking: bool = False
+    num_ctx: int = 32768
 
     max_recent_messages: int = 40
     max_tool_rounds: int = 5
@@ -40,6 +41,7 @@ _TOML_MAP = {
     ("model", "min_p"): "min_p",
     ("model", "rep_penalty"): "rep_penalty",
     ("model", "thinking"): "thinking",
+    ("model", "num_ctx"): "num_ctx",
     ("context", "max_recent_messages"): "max_recent_messages",
     ("server", "host"): "host",
     ("server", "port"): "port",
@@ -62,6 +64,7 @@ _API_FIELDS = {
     "min_p": "min_p",
     "rep_penalty": "rep_penalty",
     "thinking": "thinking",
+    "num_ctx": "num_ctx",
     "max_recent_messages": "max_recent_messages",
     "max_tool_rounds": "max_tool_rounds",
     "allowed_read_dirs": "allowed_read_dirs",
