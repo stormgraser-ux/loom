@@ -334,11 +334,27 @@ def create_app(config_path: str = "config.toml") -> FastAPI:
 
 def cli():
     parser = argparse.ArgumentParser(description="Loom — local model chat wrapper")
+    sub = parser.add_subparsers(dest="command")
+
+    # default: run the server (also runs when no subcommand given)
     parser.add_argument("--config", default="config.toml", help="Config file path")
     parser.add_argument("--host", help="Override host")
     parser.add_argument("--port", type=int, help="Override port")
+
+    p_install = sub.add_parser("install", help="Register Loom as an autostart service")
+    p_install.add_argument("--config", default="config.toml", help="Config file path")
+
+    p_uninstall = sub.add_parser("uninstall", help="Remove the autostart service")
+
     args = parser.parse_args()
 
-    app = create_app(args.config)
-    cfg = app.state.config
-    uvicorn.run(app, host=args.host or cfg.host, port=args.port or cfg.port)
+    if args.command == "install":
+        from loom.install import run_install
+        run_install(config=args.config)
+    elif args.command == "uninstall":
+        from loom.install import run_uninstall
+        run_uninstall()
+    else:
+        app = create_app(args.config)
+        cfg = app.state.config
+        uvicorn.run(app, host=args.host or cfg.host, port=args.port or cfg.port)
