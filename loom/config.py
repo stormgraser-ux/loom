@@ -10,9 +10,9 @@ class Config:
     temperature: float = 0.7
     max_tokens: int = 2048
     llm_timeout: float = 120.0
-    top_p: float = 0.92
+    top_p: float = 0.9
     min_p: float = 0.05
-    rep_penalty: float = 1.12
+    rep_penalty: float = 1.1
     thinking: bool = False
 
     max_recent_messages: int = 40
@@ -22,6 +22,7 @@ class Config:
     port: int = 3000
 
     persona_dir: str = "persona"
+    active_preset_id: str = ""
     database_url: str = "sqlite+aiosqlite:///data/loom.db"
 
     allowed_read_dirs: list[str] = field(default_factory=list)
@@ -43,6 +44,7 @@ _TOML_MAP = {
     ("server", "host"): "host",
     ("server", "port"): "port",
     ("persona", "dir"): "persona_dir",
+    ("persona", "active_preset"): "active_preset_id",
     ("database", "url"): "database_url",
     ("tools", "allowed_read_dirs"): "allowed_read_dirs",
     ("tools", "web_search_engine"): "web_search_engine",

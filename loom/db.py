@@ -35,6 +35,16 @@ class Memory(Base):
     updated_at = Column(BigInteger, nullable=False)
 
 
+class SystemPromptPreset(Base):
+    __tablename__ = "system_prompt_preset"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(BigInteger, nullable=False)
+    updated_at = Column(BigInteger, nullable=False)
+
+
 _engine = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 

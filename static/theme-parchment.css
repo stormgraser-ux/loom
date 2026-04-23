@@ -1,0 +1,219 @@
+/* ============================================================
+ * Loom · parchment/daylight theme — "Dawn Loom"
+ *
+ * Companion to Moonlight Dusk. Activate by adding
+ *   data-theme="parchment"
+ * to the <html> element (or any ancestor of the UI).
+ *
+ * Self-contained — only references existing Loom token names.
+ * Safe to apply on desktop AND mobile since both stylesheets use
+ * the same token vocabulary.
+ *
+ * Concept: the grimoire at sunrise. Cream parchment ground, a
+ * peach wash from the east, a soft lavender trailing off to the
+ * southwest, honey candle in place of the desk candle, slate-ink
+ * text (never black), hairline warm-stone borders. Every motif —
+ * sigils, ⟡/⟢, drop cap, corner marks, ◇ divider, noise overlay —
+ * preserved, only re-lit.
+ * ============================================================ */
+
+[data-theme="parchment"] {
+  /* ---------- paper grounds ---------- */
+  /* --ink* semantically means "background layers" — parchment reads light here */
+  --ink:   oklch(0.965 0.015 80);
+  --ink-2: oklch(0.935 0.020 75);
+  --ink-3: oklch(0.905 0.024 72);
+  --ink-4: oklch(0.870 0.026 70);
+
+  /* ---------- ink (text) ---------- */
+  /* --vellum* semantically means "foreground layers" — ink reads dark here */
+  --vellum:        oklch(0.30 0.020 275);
+  --vellum-dim:    oklch(0.44 0.018 275);
+  --vellum-faint:  oklch(0.58 0.015 275);
+  --vellum-ghost:  oklch(0.70 0.012 270);
+
+  /* ---------- candle (warm accent) — honey / amber ---------- */
+  --candle:        oklch(0.70 0.145 65);
+  --candle-bright: oklch(0.80 0.155 72);
+  --candle-dim:    oklch(0.60 0.110 62);
+
+  /* ---------- thread colors — watercolor-tin saturation ---------- */
+  --ember:     oklch(0.56 0.165 28);
+  --moss:      oklch(0.58 0.110 150);
+  --lapis:     oklch(0.52 0.140 252);
+  --amethyst:  oklch(0.56 0.135 312);
+  --verdigris: oklch(0.60 0.090 180);
+
+  /* ---------- semantic tokens ---------- */
+  --bg:         var(--ink);
+  --surface:    var(--ink-2);
+  --surface-2:  var(--ink-3);
+  --border:      oklch(0.78 0.018 70);
+  --border-soft: oklch(0.85 0.016 72);
+  --border-gold: color-mix(in oklch, var(--candle) 35%, transparent);
+
+  --fg:       var(--vellum);
+  --fg-dim:   var(--vellum-dim);
+  --fg-faint: var(--vellum-faint);
+  --fg-ghost: var(--vellum-ghost);
+
+  --accent:    var(--candle);
+  --accent-fg: oklch(0.16 0.020 55);
+
+  /* Thread aliases (if the component layer uses --thread-N directly) */
+  --thread-1: var(--candle);
+  --thread-2: var(--lapis);
+  --thread-3: var(--moss);
+  --thread-4: var(--amethyst);
+  --thread-5: var(--ember);
+
+  /* Arcane intensity reads a little dialed-down on paper — the grimoire
+     glow fights the daylight less if we leave it at 0.85. Users can still
+     push it via the Appearance control. */
+  --arcane: 0.85;
+
+  color-scheme: light;
+}
+
+/* =================================================================
+ * PAGE GROUND — dawn washes behind everything
+ * (Overrides the `body { background: ... }` rule in the base stylesheet.)
+ * ================================================================= */
+[data-theme="parchment"] body {
+  background:
+    radial-gradient(ellipse 70% 55% at 12% 0%,
+      color-mix(in oklch, oklch(0.92 0.085 55) 55%, transparent) 0%,
+      transparent 60%),
+    radial-gradient(ellipse 55% 45% at 92% 100%,
+      color-mix(in oklch, oklch(0.88 0.055 300) 42%, transparent) 0%,
+      transparent 70%),
+    radial-gradient(ellipse 120% 80% at 50% 120%,
+      color-mix(in oklch, var(--candle) calc(8% * var(--arcane)), transparent) 0%,
+      transparent 55%),
+    var(--bg);
+}
+
+/* Noise overlay — re-tinted so the grain reads as warm brown on cream
+   instead of the original gold-on-ink. Uses multiply instead of soft-light. */
+[data-theme="parchment"] body::before {
+  opacity: calc(0.045 * var(--arcane));
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.28  0 0 0 0 0.20  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+}
+
+/* =================================================================
+ * SHADOW PATCHES — the base stylesheet has ~12 hard-coded
+ *   rgba(0,0,0, 0.3–0.55)
+ * box-shadows tuned for ink-dark ground. On parchment they read too
+ * heavy, so we replace each with a warm-ink shadow at reduced alpha.
+ * Rule-of-thumb: halve alpha, tint ink-brown not black.
+ *
+ * If a selector below doesn't exist in your build (e.g. the mobile
+ * stylesheet doesn't include all of them), the rule is a harmless no-op.
+ * ================================================================= */
+
+/* Desktop: topbar weave-title input, new-weave button */
+[data-theme="parchment"] .new-weave {
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--candle) 30%, transparent),
+    0 1px 0 color-mix(in oklch, oklch(0.25 0.03 60) 12%, transparent);
+}
+
+/* Composer — the warm desk-candle glow becomes morning haze */
+[data-theme="parchment"] .composer {
+  box-shadow:
+    0 10px 30px color-mix(in oklch, oklch(0.30 0.04 60) 14%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--candle) 18%, transparent);
+}
+
+/* Send button (desktop + mobile) */
+[data-theme="parchment"] .send-btn {
+  box-shadow:
+    0 1px 0 color-mix(in oklch, oklch(0.25 0.03 60) 12%, transparent),
+    inset 0 1px 0 color-mix(in oklch, oklch(1 0 0) 50%, transparent);
+}
+
+/* Model-swap sheet, sheet surfaces */
+[data-theme="parchment"] .sheet,
+[data-theme="parchment"] .model-sheet,
+[data-theme="parchment"] .branches-sheet {
+  box-shadow:
+    0 -20px 60px color-mix(in oklch, oklch(0.30 0.04 60) 15%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--candle) 14%, transparent);
+}
+
+/* Modal / dialog (desktop) */
+[data-theme="parchment"] .modal,
+[data-theme="parchment"] .dialog {
+  box-shadow: 0 30px 80px color-mix(in oklch, oklch(0.30 0.04 60) 18%, transparent),
+              inset 0 1px 0 color-mix(in oklch, var(--candle) 18%, transparent);
+}
+
+/* Left drawer (mobile) */
+[data-theme="parchment"] .drawer,
+[data-theme="parchment"] .left-drawer {
+  box-shadow: 12px 0 40px color-mix(in oklch, oklch(0.30 0.04 60) 18%, transparent);
+}
+
+/* Scrim (mobile drawer / sheet backdrop) — lighten to avoid pitch-black veil */
+[data-theme="parchment"] .scrim {
+  background: color-mix(in oklch, oklch(0.30 0.04 60) 30%, transparent);
+}
+
+/* Popovers / tooltips */
+[data-theme="parchment"] .popover,
+[data-theme="parchment"] .tooltip,
+[data-theme="parchment"] .menu {
+  box-shadow: 0 8px 24px color-mix(in oklch, oklch(0.30 0.04 60) 14%, transparent);
+}
+
+/* Branch-alts pop-out card */
+[data-theme="parchment"] .branch-alt.active {
+  box-shadow:
+    inset 0 0 0 1px var(--candle),
+    0 0 calc(16px * var(--arcane)) color-mix(in oklch, var(--candle) 22%, transparent);
+}
+
+/* =================================================================
+ * MISC — small tuning for bits that behave differently on light.
+ * ================================================================= */
+
+/* Italic emphasis used candle-bright on dark; on parchment that reads too
+   pale. Drop a shade for contrast against cream. */
+[data-theme="parchment"] .msg-content em {
+  color: oklch(0.50 0.120 55);
+}
+[data-theme="parchment"] .msg-content code {
+  color: oklch(0.50 0.120 55);
+}
+
+/* The ⟡ header sigil sits over parchment — pull the glow to the same
+   deep-candle so it reads as ink-burn, not a bright flame. */
+[data-theme="parchment"] .weave-header::after {
+  color: oklch(0.50 0.120 55);
+  text-shadow: 0 0 10px color-mix(in oklch, var(--candle) 25%, transparent);
+}
+
+/* Drop cap — warm morning halo, slightly more saturated ink */
+[data-theme="parchment"] .msg-row.assistant.first .msg-content > p:first-child::first-letter {
+  color: oklch(0.50 0.120 55);
+  text-shadow: 0 0 16px color-mix(in oklch, var(--candle) 35%, transparent);
+}
+
+/* Selection — candle-tinted, readable on parchment */
+[data-theme="parchment"] ::selection {
+  background: color-mix(in oklch, var(--candle) 35%, transparent);
+  color: var(--vellum);
+}
+
+/* Scrollbar thumb — lighten for visibility on cream */
+[data-theme="parchment"] ::-webkit-scrollbar-thumb {
+  background: var(--ink-4);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+[data-theme="parchment"] ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.78 0.025 70);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}

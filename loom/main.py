@@ -2,6 +2,8 @@ import argparse
 import asyncio
 import json
 import os
+import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -11,9 +13,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
 
 from loom.config import config_to_api, load_config, save_config, _API_FIELDS
-from loom.db import get_session_factory, init_db
+from loom.db import SystemPromptPreset, get_session_factory, init_db
 from loom.llm import LLMClient
 from loom.persona import clear_cache as clear_persona_cache
 from loom.routers import chat, conversations, memories
@@ -295,16 +298,104 @@ def create_app(config_path: str = "config.toml") -> FastAPI:
         except Exception:
             return {"vram_bytes": None, "vram_gb": None, "models": []}
 
+    @app.get("/api/vram-check", tags=["hardware"])
+    async def vram_check(model: str):
+        cfg = app.state.config
+        ollama_base = cfg.llm_base_url.rstrip("/").removesuffix("/v1")
+
+        total_vram_bytes = None
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "nvidia-smi",
+                "--query-gpu=memory.total",
+                "--format=csv,noheader,nounits",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5)
+            if proc.returncode == 0:
+                total_vram_bytes = int(stdout.decode().strip().split("\n")[0]) * 1024 * 1024
+        except Exception:
+            pass
+
+        used_vram_bytes = 0
+        loaded_models = []
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                r = await client.get(f"{ollama_base}/api/ps")
+                r.raise_for_status()
+                data = r.json()
+                for m in data.get("models", []):
+                    sv = m.get("size_vram", 0)
+                    used_vram_bytes += sv
+                    loaded_models.append({"name": m.get("name", ""), "size_vram": sv})
+        except Exception:
+            pass
+
+        needed_bytes = 0
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                r = await client.get(f"{ollama_base}/api/tags")
+                r.raise_for_status()
+                for m in r.json().get("models", []):
+                    if m.get("name") == model:
+                        needed_bytes = m.get("size", 0)
+                        break
+        except Exception:
+            pass
+
+        already_loaded = any(lm["name"] == model for lm in loaded_models)
+
+        if total_vram_bytes and not already_loaded:
+            fits = (used_vram_bytes + needed_bytes) <= total_vram_bytes
+        else:
+            fits = True
+
+        def _gb(b):
+            return round(b / (1024 ** 3), 1) if b else None
+
+        return {
+            "fits": fits,
+            "already_loaded": already_loaded,
+            "total_gb": _gb(total_vram_bytes),
+            "used_gb": _gb(used_vram_bytes),
+            "needed_gb": _gb(needed_bytes),
+            "loaded_models": loaded_models,
+        }
+
+    @app.post("/api/models/unload", tags=["models"])
+    async def unload_model(request: Request):
+        body = await request.json()
+        name = body.get("name", "").strip()
+        if not name:
+            return {"error": "Model name required"}
+
+        cfg = app.state.config
+        ollama_base = cfg.llm_base_url.rstrip("/").removesuffix("/v1")
+
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                r = await client.post(
+                    f"{ollama_base}/api/generate",
+                    json={"model": name, "keep_alive": 0},
+                )
+                r.raise_for_status()
+                return {"ok": True, "model": name}
+        except Exception as exc:
+            return {"error": str(exc)}
+
     @app.get("/api/system-prompt", tags=["config"])
     async def get_system_prompt():
-        d = Path(app.state.config.persona_dir)
+        cfg = app.state.config
+        d = Path(cfg.persona_dir)
         local = d / "default.local.md"
         default = d / "default.md"
+        preset_id = cfg.active_preset_id
         if local.exists():
-            return {"content": local.read_text(), "source": str(local)}
+            return {"content": local.read_text(), "source": str(local), "active_preset_id": preset_id}
         if default.exists():
-            return {"content": default.read_text(), "source": str(default)}
-        return {"content": "", "source": str(default)}
+            return {"content": default.read_text(), "source": str(default), "active_preset_id": preset_id}
+        return {"content": "", "source": str(default), "active_preset_id": preset_id}
 
     @app.put("/api/system-prompt", tags=["config"])
     async def save_system_prompt(request: Request):
@@ -315,7 +406,141 @@ def create_app(config_path: str = "config.toml") -> FastAPI:
         target = d / "default.md"
         target.write_text(content)
         clear_persona_cache()
+
+        cfg = app.state.config
+        if cfg.active_preset_id:
+            async with app.state.session_factory() as session:
+                preset = await session.get(SystemPromptPreset, cfg.active_preset_id)
+                if preset:
+                    preset.content = content
+                    preset.updated_at = int(time.time())
+                    await session.commit()
+
         return {"ok": True, "source": str(target)}
+
+    # ---- Presets ----
+
+    @app.get("/api/presets", tags=["presets"])
+    async def list_presets():
+        async with app.state.session_factory() as session:
+            result = await session.execute(
+                select(SystemPromptPreset).order_by(SystemPromptPreset.name)
+            )
+            presets = result.scalars().all()
+            return [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "content": p.content,
+                    "created_at": p.created_at,
+                    "updated_at": p.updated_at,
+                }
+                for p in presets
+            ]
+
+    @app.post("/api/presets/activate", tags=["presets"])
+    async def activate_preset(request: Request):
+        body = await request.json()
+        preset_id = body.get("id")
+        cfg = app.state.config
+
+        if not preset_id:
+            cfg.active_preset_id = ""
+            save_config(cfg, app.state.config_path)
+            return {"ok": True, "active_preset_id": ""}
+
+        async with app.state.session_factory() as session:
+            preset = await session.get(SystemPromptPreset, preset_id)
+            if not preset:
+                return {"error": "Preset not found"}
+
+            d = Path(cfg.persona_dir)
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "default.md").write_text(preset.content)
+            clear_persona_cache()
+
+            cfg.active_preset_id = preset_id
+            save_config(cfg, app.state.config_path)
+
+            return {"ok": True, "active_preset_id": preset_id, "content": preset.content}
+
+    @app.post("/api/presets", tags=["presets"])
+    async def create_preset(request: Request):
+        body = await request.json()
+        name = body.get("name", "").strip()
+        content = body.get("content", "")
+        if not name:
+            return {"error": "Name required"}
+
+        now = int(time.time())
+        preset = SystemPromptPreset(
+            id=str(uuid.uuid4()),
+            name=name,
+            content=content,
+            created_at=now,
+            updated_at=now,
+        )
+        async with app.state.session_factory() as session:
+            session.add(preset)
+            await session.commit()
+
+        cfg = app.state.config
+        cfg.active_preset_id = preset.id
+        d = Path(cfg.persona_dir)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "default.md").write_text(content)
+        clear_persona_cache()
+        save_config(cfg, app.state.config_path)
+
+        return {
+            "id": preset.id,
+            "name": preset.name,
+            "content": preset.content,
+            "created_at": preset.created_at,
+            "updated_at": preset.updated_at,
+        }
+
+    @app.patch("/api/presets/{preset_id}", tags=["presets"])
+    async def update_preset(preset_id: str, request: Request):
+        body = await request.json()
+
+        async with app.state.session_factory() as session:
+            preset = await session.get(SystemPromptPreset, preset_id)
+            if not preset:
+                return {"error": "Preset not found"}
+
+            if "name" in body:
+                preset.name = body["name"].strip()
+            if "content" in body:
+                preset.content = body["content"]
+            preset.updated_at = int(time.time())
+
+            await session.commit()
+
+            return {
+                "id": preset.id,
+                "name": preset.name,
+                "content": preset.content,
+                "created_at": preset.created_at,
+                "updated_at": preset.updated_at,
+            }
+
+    @app.delete("/api/presets/{preset_id}", tags=["presets"])
+    async def delete_preset(preset_id: str):
+        async with app.state.session_factory() as session:
+            preset = await session.get(SystemPromptPreset, preset_id)
+            if not preset:
+                return {"error": "Preset not found"}
+
+            await session.delete(preset)
+            await session.commit()
+
+        cfg = app.state.config
+        if cfg.active_preset_id == preset_id:
+            cfg.active_preset_id = ""
+            save_config(cfg, app.state.config_path)
+
+        return {"ok": True}
 
     app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
     app.include_router(

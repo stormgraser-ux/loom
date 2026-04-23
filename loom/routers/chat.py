@@ -18,11 +18,13 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     message: str
     conversation_id: str | None = None
+    model: str | None = None
 
 
 class RegenerateRequest(BaseModel):
     conversation_id: str
     message_id: str
+    model: str | None = None
 
 
 @router.post("")
@@ -85,6 +87,7 @@ async def chat_endpoint(request: Request, body: ChatRequest):
 
     async def stream():
         all_content: list[str] = []
+        effective_model = body.model or config.model
 
         yield f"data: {json.dumps({'type': 'start', 'conversation_id': conv_id})}\n\n"
 
@@ -97,6 +100,7 @@ async def chat_endpoint(request: Request, body: ChatRequest):
                     top_p=config.top_p, min_p=config.min_p,
                     rep_penalty=config.rep_penalty,
                     thinking=config.thinking,
+                    model=body.model,
                 ):
                     if msg_type == "content":
                         round_content.append(text)
@@ -111,7 +115,7 @@ async def chat_endpoint(request: Request, body: ChatRequest):
             all_content.append(content)
 
             tool_calls = extract_tool_calls(content)
-            if not tool_calls or round_num == MAX_TOOL_ROUNDS:
+            if not tool_calls or round_num == config.max_tool_rounds:
                 break
 
             yield f"data: {json.dumps({'type': 'tool_start', 'calls': [{'name': n, 'argument': a} for n, a in tool_calls]})}\n\n"
@@ -146,6 +150,7 @@ async def chat_endpoint(request: Request, body: ChatRequest):
             "childrenIds": [],
             "role": "assistant",
             "content": final_content,
+            "model": effective_model,
             "timestamp": asst_now,
         }
         chat_data["messages"][user_msg_id]["childrenIds"].append(asst_msg_id)
@@ -157,7 +162,7 @@ async def chat_endpoint(request: Request, body: ChatRequest):
             conv.updated_at = asst_now
             await db.commit()
 
-        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conv_id, 'message_id': asst_msg_id})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conv_id, 'message_id': asst_msg_id, 'model': effective_model})}\n\n"
 
     return StreamingResponse(
         stream(),
@@ -206,6 +211,8 @@ async def regenerate_endpoint(request: Request, body: RegenerateRequest):
 
     async def stream():
         all_content: list[str] = []
+        effective_model = body.model or config.model
+
         yield f"data: {json.dumps({'type': 'start', 'conversation_id': conv_id})}\n\n"
 
         for round_num in range(config.max_tool_rounds + 1):
@@ -216,6 +223,7 @@ async def regenerate_endpoint(request: Request, body: RegenerateRequest):
                     top_p=config.top_p, min_p=config.min_p,
                     rep_penalty=config.rep_penalty,
                     thinking=config.thinking,
+                    model=body.model,
                 ):
                     if msg_type == "content":
                         round_content.append(text)
@@ -230,7 +238,7 @@ async def regenerate_endpoint(request: Request, body: RegenerateRequest):
             all_content.append(content)
 
             tool_calls = extract_tool_calls(content)
-            if not tool_calls or round_num == MAX_TOOL_ROUNDS:
+            if not tool_calls or round_num == config.max_tool_rounds:
                 break
 
             yield f"data: {json.dumps({'type': 'tool_start', 'calls': [{'name': n, 'argument': a} for n, a in tool_calls]})}\n\n"
@@ -262,6 +270,7 @@ async def regenerate_endpoint(request: Request, body: RegenerateRequest):
             "childrenIds": [],
             "role": "assistant",
             "content": final_content,
+            "model": effective_model,
             "timestamp": asst_now,
         }
         chat_data["messages"][user_msg_id]["childrenIds"].append(asst_msg_id)
@@ -273,7 +282,7 @@ async def regenerate_endpoint(request: Request, body: RegenerateRequest):
             conv.updated_at = asst_now
             await db.commit()
 
-        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conv_id, 'message_id': asst_msg_id})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conv_id, 'message_id': asst_msg_id, 'model': effective_model})}\n\n"
 
     return StreamingResponse(
         stream(),

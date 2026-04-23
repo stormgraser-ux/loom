@@ -83,17 +83,20 @@ const API = (() => {
     return controller;
   }
 
-  function sendMessage(message, conversationId, onEvent) {
+  function sendMessage(message, conversationId, onEvent, model) {
     const body = { message };
     if (conversationId) body.conversation_id = conversationId;
+    if (model) body.model = model;
     return _streamSSE('/api/chat', body, onEvent);
   }
 
-  function regenerateMessage(conversationId, messageId, onEvent) {
-    return _streamSSE('/api/chat/regenerate', {
+  function regenerateMessage(conversationId, messageId, onEvent, model) {
+    const body = {
       conversation_id: conversationId,
       message_id: messageId,
-    }, onEvent);
+    };
+    if (model) body.model = model;
+    return _streamSSE('/api/chat/regenerate', body, onEvent);
   }
 
   // ---- Memories ----
@@ -135,6 +138,30 @@ const API = (() => {
     });
   }
 
+  // ---- Presets ----
+
+  function listPresets() {
+    return fetchJSON('/api/presets');
+  }
+
+  function createPreset(name, content) {
+    return fetchJSON('/api/presets', {
+      method: 'POST',
+      body: JSON.stringify({ name, content }),
+    });
+  }
+
+  function activatePreset(id) {
+    return fetchJSON('/api/presets/activate', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    });
+  }
+
+  function deletePreset(id) {
+    return fetchJSON(`/api/presets/${id}`, { method: 'DELETE' });
+  }
+
   function getConfig() {
     return fetchJSON('/api/config');
   }
@@ -168,6 +195,17 @@ const API = (() => {
 
   function getPs() {
     return fetchJSON('/api/ps');
+  }
+
+  function checkVram(modelName) {
+    return fetchJSON(`/api/vram-check?model=${encodeURIComponent(modelName)}`);
+  }
+
+  function unloadModel(name) {
+    return fetchJSON('/api/models/unload', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
   }
 
   // ---- Helpers ----
@@ -265,6 +303,7 @@ const API = (() => {
         children: [...(msg.childrenIds || [])],
         role: msg.role,
         content,
+        model: msg.model || null,
         ts: formatTime(msg.timestamp),
       };
 
@@ -318,8 +357,9 @@ const API = (() => {
     sendMessage, regenerateMessage,
     listMemories, createMemory, updateMemory, deleteMemory,
     getSystemPrompt, saveSystemPrompt,
+    listPresets, createPreset, activatePreset, deletePreset,
     getConfig, updateConfig, listModels, pullModel, importModel,
-    getCatalog, getHardware, getPs,
+    getCatalog, getHardware, getPs, checkVram, unloadModel,
     formatTime, relativeTime, dateGroup, countThreads,
     convToWeave, convDetailToWeave, chatToTree,
     memoryToFrontend, markFiring,

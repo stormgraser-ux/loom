@@ -87,7 +87,7 @@
   // =========================================================
   // MOBILE MESSAGE ROW
   // =========================================================
-  function MobileMessageRow({ node, isFirst, onFork, onPickSibling, siblingIds, nodes, onRegenerate, onOpenBranch }) {
+  function MobileMessageRow({ node, isFirst, onFork, onPickSibling, siblingIds, nodes, onRegenerate, onOpenBranch, weaveMode }) {
     const [copied, setCopied] = useState(false);
 
     function handleCopy() {
@@ -148,10 +148,22 @@
         )}
 
         {hasSiblings && (
-          <button className="m-siblings" onClick={onOpenBranch}>
-            <Icon name="branch" />
-            <span>thread <b>{myIdx + 1}</b> / {siblingIds.length}</span>
-          </button>
+          weaveMode === 'linear' ? (
+            <span className="m-siblings linear-nav">
+              <button className="m-sib-arrow" disabled={myIdx === 0} onClick={() => onPickSibling(siblingIds[myIdx - 1])}>
+                <Icon name="chevronL" size={10} />
+              </button>
+              <span>{myIdx + 1} / {siblingIds.length}</span>
+              <button className="m-sib-arrow" disabled={myIdx >= siblingIds.length - 1} onClick={() => onPickSibling(siblingIds[myIdx + 1])}>
+                <Icon name="chevronR" size={10} />
+              </button>
+            </span>
+          ) : (
+            <button className="m-siblings" onClick={onOpenBranch}>
+              <Icon name="branch" />
+              <span>thread <b>{myIdx + 1}</b> / {siblingIds.length}</span>
+            </button>
+          )
         )}
 
         {node.role !== 'system' && (
@@ -172,7 +184,7 @@
   // =========================================================
   // MOBILE COMPOSER
   // =========================================================
-  function MobileComposer({ onSend, streaming, thinkingDefault, onToggleThinking, config, healthy, streamTokens, streamStart, tree }) {
+  function MobileComposer({ onSend, streaming, thinkingDefault, onToggleThinking, config, healthy, streamTokens, streamStart, tree, models, composerModel, onComposerModelChange, loadedModels }) {
     const [value, setValue] = useState('');
     const ref = useRef(null);
     const wrapRef = useRef(null);
@@ -249,6 +261,14 @@
               <button title="Reference memory"><Icon name="at" /></button>
               <button title="Persona"><Icon name="persona" /></button>
             </div>
+            {models && models.length > 0 && (
+              <ModelPicker
+                models={models}
+                activeModel={composerModel}
+                onModelChange={onComposerModelChange}
+                loadedModels={loadedModels || []}
+              />
+            )}
             <button className={'m-think-toggle ' + (thinkingDefault ? 'on' : '')} onClick={onToggleThinking}>
               <Icon name="thinking" />
               <span>think</span>
@@ -449,7 +469,7 @@
   // =========================================================
   // MOBILE SETTINGS
   // =========================================================
-  function MobileSettings({ config, onSaveConfig, statusVisible, setStatusVisible, tweaks, setTweaks, memories, thinking, onToggleThinking }) {
+  function MobileSettings({ config, onSaveConfig, statusVisible, setStatusVisible, weaveMode, setWeaveMode, tweaks, setTweaks, memories, thinking, onToggleThinking }) {
     const [temp, setTemp] = useState(config?.temperature ?? 0.7);
     const [topP, setTopP] = useState(config?.top_p ?? 0.92);
     const [ctxWindow, setCtxWindow] = useState(config?.max_recent_messages ?? 40);
@@ -500,6 +520,13 @@
             <div className="m-srow">
               <div className="m-slabel">Thinking by default<span className="m-shint">assistant reasons before replying</span></div>
               <div className={'m-switch ' + (thinking ? 'on' : '')} onClick={onToggleThinking} />
+            </div>
+            <div className="m-srow">
+              <div className="m-slabel">Weave mode<span className="m-shint">branching shows threads inline, linear keeps it clean</span></div>
+              <div className="m-seg">
+                <button className={weaveMode !== 'linear' ? 'active' : ''} onClick={() => setWeaveMode('branching')}>branching</button>
+                <button className={weaveMode === 'linear' ? 'active' : ''} onClick={() => setWeaveMode('linear')}>linear</button>
+              </div>
             </div>
           </div>
         </div>
@@ -563,6 +590,13 @@
         <div className="m-settings-section">
           <span className="caps">Appearance</span>
           <div className="m-settings-card">
+            <div className="m-srow">
+              <div className="m-slabel">Theme<span className="m-shint">dark or light</span></div>
+              <div className="m-seg">
+                <button className={getTheme() !== 'parchment' ? 'active' : ''} onClick={() => { setTheme('dusk'); setTweaks(prev => ({ ...prev })); }}>Dusk</button>
+                <button className={getTheme() === 'parchment' ? 'active' : ''} onClick={() => { setTheme('parchment'); setTweaks(prev => ({ ...prev })); }}>Dawn</button>
+              </div>
+            </div>
             <div className="m-srow col">
               <div className="m-slabel">Accent</div>
               <div className="m-swatch-row">
@@ -700,6 +734,8 @@
             onSaveConfig={p.onSaveConfig}
             statusVisible={p.statusVisible}
             setStatusVisible={p.setStatusVisible}
+            weaveMode={p.weaveMode}
+            setWeaveMode={p.setWeaveMode}
             tweaks={p.tweaks}
             setTweaks={p.setTweaks}
             memories={p.memories}
@@ -718,7 +754,7 @@
           modelChip={p.loomConfig?.model || '—'}
           onMenuTap={() => setDrawerOpen(true)}
           onModelTap={() => setModelSheetOpen(true)}
-          onBranchTap={lastBranchable ? () => setBranchSheetNode(lastBranchable) : null}
+          onBranchTap={lastBranchable && p.weaveMode !== 'linear' ? () => setBranchSheetNode(lastBranchable) : null}
           onSettingsTap={() => setSettingsOpen(true)}
         />
         <div className="m-weave-area">
@@ -747,6 +783,7 @@
                       nodes={p.tree.nodes}
                       onRegenerate={() => p.onRegenerate(id)}
                       onOpenBranch={() => setBranchSheetNode(id)}
+                      weaveMode={p.weaveMode}
                     />
                   );
                 })}
@@ -765,6 +802,10 @@
             streamTokens={p.streamTokens}
             streamStart={p.streamStart}
             tree={p.tree}
+            models={p.models}
+            composerModel={p.composerModel}
+            onComposerModelChange={p.onComposerModelChange}
+            loadedModels={p.loadedModels}
           />
         </div>
 

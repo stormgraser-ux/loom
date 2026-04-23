@@ -26,6 +26,17 @@ function applyTweaks(t) {
   root.style.setProperty('--arcane', String(t.arcane));
 }
 
+function setTheme(next) {
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('loom.theme', next);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', next === 'parchment' ? '#ece3d2' : '#1f1d24');
+}
+
+function getTheme() {
+  return document.documentElement.getAttribute('data-theme') || 'dusk';
+}
+
 function renderMarkdown(text) {
   const segments = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
   return segments.map((seg, i) => {
@@ -163,7 +174,7 @@ function LeftRail({ collapsed, weaves, activeId, onPick, onNewWeave }) {
 }
 
 // ---------- A single chat message ----------
-function MessageRow({ node, isFirst, onFork, onPickSibling, siblingIds, nodes, branchOpen, toggleBranch, onRegenerate }) {
+function MessageRow({ node, isFirst, onFork, onPickSibling, siblingIds, nodes, branchOpen, toggleBranch, onRegenerate, weaveMode }) {
   const [openChip, setOpenChip] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -195,11 +206,23 @@ function MessageRow({ node, isFirst, onFork, onPickSibling, siblingIds, nodes, b
           {node.ts && <span>{node.ts}</span>}
           {node.tokens && <span>· {node.tokens} tok · {node.tokps?.toFixed(1) || '—'} tok/s</span>}
           {hasSiblings && (
-            <span className="siblings" onClick={toggleBranch} style={{ marginLeft: 'auto', cursor: 'pointer' }}>
-              <Icon name="branch" size={11} />
-              <span>thread</span>
-              <b>{myIdx + 1}</b> / {siblingIds.length}
-            </span>
+            weaveMode === 'linear' ? (
+              <span className="siblings linear-nav" style={{ marginLeft: 'auto' }}>
+                <button className="sib-arrow" disabled={myIdx === 0} onClick={() => onPickSibling(siblingIds[myIdx - 1])}>
+                  <Icon name="chevronL" size={10} />
+                </button>
+                <span>{myIdx + 1} / {siblingIds.length}</span>
+                <button className="sib-arrow" disabled={myIdx >= siblingIds.length - 1} onClick={() => onPickSibling(siblingIds[myIdx + 1])}>
+                  <Icon name="chevronR" size={10} />
+                </button>
+              </span>
+            ) : (
+              <span className="siblings" onClick={toggleBranch} style={{ marginLeft: 'auto', cursor: 'pointer' }}>
+                <Icon name="branch" size={11} />
+                <span>thread</span>
+                <b>{myIdx + 1}</b> / {siblingIds.length}
+              </span>
+            )
           )}
         </div>
 
@@ -260,7 +283,7 @@ function MessageRow({ node, isFirst, onFork, onPickSibling, siblingIds, nodes, b
           </div>
         )}
 
-        {hasSiblings && branchOpen && (
+        {hasSiblings && branchOpen && weaveMode !== 'linear' && (
           <div className="branch-alts glow-in">
             <div className="branch-alts-head">
               <div className="caps">⟢ Alternate threads from this branch</div>
@@ -298,8 +321,106 @@ function MessageRow({ node, isFirst, onFork, onPickSibling, siblingIds, nodes, b
   );
 }
 
+// ---------- Model Picker ----------
+function ModelPicker({ models, activeModel, onModelChange, loadedModels }) {
+  const [open, setOpen] = useState(false);
+  const [vramInfo, setVramInfo] = useState(null);
+  const [unloading, setUnloading] = useState(null);
+  const [dropPos, setDropPos] = useState(null);
+  const wrapRef = useRef(null);
+  const chipRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClick(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        const dropdown = document.querySelector('.model-picker-dropdown');
+        if (dropdown && dropdown.contains(e.target)) return;
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  function toggleOpen() {
+    if (!open && chipRef.current) {
+      const rect = chipRef.current.getBoundingClientRect();
+      setDropPos({ bottom: window.innerHeight - rect.top + 8, left: rect.left });
+    }
+    setOpen(!open);
+  }
+
+  function handlePick(name) {
+    onModelChange(name);
+    setOpen(false);
+    setVramInfo(null);
+    if (!loadedModels.includes(name)) {
+      API.checkVram(name).then(info => { if (!info.fits) setVramInfo(info); }).catch(() => {});
+    }
+  }
+
+  function handleUnload(name, e) {
+    e.stopPropagation();
+    setUnloading(name);
+    API.unloadModel(name).then(() => {
+      setUnloading(null);
+      setVramInfo(null);
+      if (activeModel) {
+        API.checkVram(activeModel).then(info => { if (!info.fits) setVramInfo(info); else setVramInfo(null); }).catch(() => {});
+      }
+    }).catch(() => setUnloading(null));
+  }
+
+  const shortName = activeModel ? activeModel.replace(/:latest$/, '') : '—';
+
+  return (
+    <div className="model-picker-wrap" ref={wrapRef}>
+      <button ref={chipRef} className="model-picker-chip" onClick={toggleOpen} title="Select model for this message">
+        <span className={'model-picker-dot' + (loadedModels.includes(activeModel) ? ' loaded' : '')} />
+        <span className="model-picker-name">{shortName}</span>
+        <Icon name="chevronDown" size={10} />
+      </button>
+      {open && dropPos && ReactDOM.createPortal(
+        <div className="model-picker-dropdown glow-in" style={{ position: 'fixed', bottom: dropPos.bottom, left: dropPos.left }}>
+          <div className="model-picker-head">
+            <span className="caps">Model for next message</span>
+          </div>
+          {models.map(m => {
+            const isLoaded = loadedModels.includes(m.name);
+            const isActive = m.name === activeModel;
+            return (
+              <div key={m.name} className={'model-picker-item' + (isActive ? ' active' : '')} onClick={() => handlePick(m.name)}>
+                <span className={'model-picker-dot' + (isLoaded ? ' loaded' : '')} />
+                <div className="model-picker-info">
+                  <span className="model-picker-item-name">{m.name.replace(/:latest$/, '')}</span>
+                  <span className="model-picker-item-meta">{m.params}{m.quant ? ' · ' + m.quant : ''}</span>
+                </div>
+                {isActive && <span className="model-picker-check"><Icon name="send" size={10} /></span>}
+              </div>
+            );
+          })}
+        </div>,
+        document.body
+      )}
+      {vramInfo && !vramInfo.fits && ReactDOM.createPortal(
+        <div className="model-vram-warning glow-in" style={{ position: 'fixed', bottom: dropPos?.bottom || 60, left: dropPos?.left || 0 }}>
+          <span className="model-vram-label">Won't fit — need {vramInfo.needed_gb} GB, have {((vramInfo.total_gb || 0) - (vramInfo.used_gb || 0)).toFixed(1)} GB free</span>
+          {vramInfo.loaded_models?.map(lm => (
+            <button key={lm.name} className="model-vram-unload" onClick={(e) => handleUnload(lm.name, e)} disabled={unloading === lm.name}>
+              {unloading === lm.name ? 'unloading…' : `unload ${lm.name.replace(/:latest$/, '')}`}
+            </button>
+          ))}
+          <button className="model-vram-dismiss" onClick={() => setVramInfo(null)}>dismiss</button>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 // ---------- Composer ----------
-function Composer({ onSend, streaming, thinkingDefault, onToggleThinking }) {
+function Composer({ onSend, streaming, thinkingDefault, onToggleThinking, models, composerModel, onComposerModelChange, loadedModels }) {
   const [value, setValue] = useState('');
   const ref = useRef(null);
 
@@ -334,6 +455,14 @@ function Composer({ onSend, streaming, thinkingDefault, onToggleThinking }) {
             <button title="Sampler override for this turn"><Icon name="sliders" /></button>
           </div>
           <div className="composer-right">
+            {models && models.length > 0 && (
+              <ModelPicker
+                models={models}
+                activeModel={composerModel}
+                onModelChange={onComposerModelChange}
+                loadedModels={loadedModels || []}
+              />
+            )}
             <button
               className={'think-toggle ' + (thinkingDefault ? 'on' : '')}
               onClick={onToggleThinking}
@@ -357,7 +486,7 @@ function Composer({ onSend, streaming, thinkingDefault, onToggleThinking }) {
 }
 
 // ---------- Main weave (middle pane) ----------
-function WeaveView({ tree, activeWeave, onFork, onPickSibling, branchOpen, toggleBranch, onSend, streaming, onRegenerate, thinkingDefault, onToggleThinking }) {
+function WeaveView({ tree, activeWeave, onFork, onPickSibling, branchOpen, toggleBranch, onSend, streaming, onRegenerate, thinkingDefault, onToggleThinking, weaveMode, models, composerModel, onComposerModelChange, loadedModels }) {
   const viewportRef = useRef(null);
 
   const path = tree.currentPath || [];
@@ -417,6 +546,7 @@ function WeaveView({ tree, activeWeave, onFork, onPickSibling, branchOpen, toggl
                   branchOpen={branchOpen === id}
                   toggleBranch={() => toggleBranch(id)}
                   onRegenerate={() => onRegenerate(id)}
+                  weaveMode={weaveMode}
                 />
               ))}
             </>
@@ -428,7 +558,7 @@ function WeaveView({ tree, activeWeave, onFork, onPickSibling, branchOpen, toggl
           )}
         </div>
       </div>
-      <Composer onSend={onSend} streaming={streaming} thinkingDefault={thinkingDefault} onToggleThinking={onToggleThinking} />
+      <Composer onSend={onSend} streaming={streaming} thinkingDefault={thinkingDefault} onToggleThinking={onToggleThinking} models={models} composerModel={composerModel} onComposerModelChange={onComposerModelChange} loadedModels={loadedModels} />
     </div>
   );
 }
@@ -755,7 +885,7 @@ function StatusBar({ visible, weaveTitle, config, healthy, streaming, streamToke
 }
 
 Object.assign(window, {
-  applyTweaks, TWEAK_DEFAULTS, ACCENTS, STAT_DEFS,
-  TopBar, LeftRail, WeaveView, RightPane, StatusBar, MessageRow, Composer,
+  applyTweaks, TWEAK_DEFAULTS, ACCENTS, STAT_DEFS, setTheme, getTheme,
+  TopBar, LeftRail, WeaveView, RightPane, StatusBar, MessageRow, Composer, ModelPicker,
   ContextBar, MemoriesPanel, ThreadsPanel, ContextPanel, MemoryCard, renderMarkdown,
 });

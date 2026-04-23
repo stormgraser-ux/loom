@@ -30,10 +30,22 @@ function App() {
   const [healthy, setHealthy] = useS(null);
   const [thinking, setThinking] = useS(false);
   const [vramGb, setVramGb] = useS(null);
+  const [composerModel, setComposerModel] = useS(null);
+  const [loadedModels, setLoadedModels] = useS([]);
 
   const streamRef = useR(null);
   const activeWeaveIdRef = useR(null);
   activeWeaveIdRef.current = activeWeaveId;
+
+  useE(() => {
+    const saved = localStorage.getItem('loom.theme');
+    if (saved === 'parchment' || saved === 'dusk') {
+      document.documentElement.setAttribute('data-theme', saved);
+    } else {
+      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      document.documentElement.setAttribute('data-theme', prefersLight ? 'parchment' : 'dusk');
+    }
+  }, []);
 
   useE(() => { applyTweaks(tweaks); localStorage.setItem('loom:tweaks', JSON.stringify(tweaks)); }, [tweaks]);
   useE(() => { localStorage.setItem('loom:statusVisible', JSON.stringify(statusVisible)); }, [statusVisible]);
@@ -58,7 +70,10 @@ function App() {
   }, []);
 
   function refreshVram() {
-    API.getPs().then(ps => { if (ps.vram_gb != null) setVramGb(ps.vram_gb); }).catch(() => {});
+    API.getPs().then(ps => {
+      if (ps.vram_gb != null) setVramGb(ps.vram_gb);
+      if (ps.models) setLoadedModels(ps.models.map(m => m.name));
+    }).catch(() => {});
   }
 
   useE(() => {
@@ -73,7 +88,7 @@ function App() {
     refreshWeaves();
     refreshMemories();
     refreshVram();
-    API.getConfig().then(c => { setLoomConfig(c); setThinking(!!c.thinking); }).catch(() => {});
+    API.getConfig().then(c => { setLoomConfig(c); setThinking(!!c.thinking); setComposerModel(prev => prev || c.model); }).catch(() => {});
     API.listModels().then(m => setModels(m || [])).catch(() => {});
   }, []);
 
@@ -116,6 +131,7 @@ function App() {
   function handleSend(message) {
     if (!message.trim() || streaming) return;
 
+    const sendModel = composerModel || loomConfig?.model;
     const now = Math.floor(Date.now() / 1000);
     const tmpUser = '_u' + now;
     const tmpAsst = '_a' + now;
@@ -134,6 +150,7 @@ function App() {
       nodes[tmpAsst] = {
         id: tmpAsst, parent: tmpUser, children: [],
         role: 'assistant', content: [], streaming: true, ts: '',
+        model: sendModel,
       };
 
       return {
@@ -220,7 +237,7 @@ function App() {
           });
           break;
       }
-    });
+    }, sendModel);
 
     streamRef.current = ctrl;
   }
@@ -230,6 +247,7 @@ function App() {
     const node = tree.nodes[messageId];
     if (!node || node.role !== 'assistant') return;
 
+    const regenModel = composerModel || loomConfig?.model;
     const parentId = node.parent;
     const now = Math.floor(Date.now() / 1000);
     const tmpAsst = '_r' + now;
@@ -242,6 +260,7 @@ function App() {
       nodes[tmpAsst] = {
         id: tmpAsst, parent: parentId, children: [],
         role: 'assistant', content: [], streaming: true, ts: '',
+        model: regenModel,
       };
       const path = [...prev.currentPath];
       const idx = path.indexOf(messageId);
@@ -296,7 +315,7 @@ function App() {
           });
           break;
       }
-    });
+    }, regenModel);
     streamRef.current = ctrl;
   }
 
@@ -397,8 +416,13 @@ function App() {
         onToggleThinking={handleToggleThinking}
         onSaveConfig={handleSaveConfig}
         onSwapModel={handleSwapModel}
+        composerModel={composerModel || loomConfig?.model}
+        onComposerModelChange={setComposerModel}
+        loadedModels={loadedModels}
         statusVisible={statusVisible}
         setStatusVisible={setStatusVisible}
+        weaveMode={weaveMode}
+        setWeaveMode={setWeaveMode}
         tweaks={tweaks}
         setTweaks={setTweaks}
         onAddMemory={handleAddMemory}
@@ -440,6 +464,11 @@ function App() {
         onRegenerate={handleRegenerate}
         thinkingDefault={thinking}
         onToggleThinking={handleToggleThinking}
+        weaveMode={weaveMode}
+        models={models}
+        composerModel={composerModel || loomConfig?.model}
+        onComposerModelChange={setComposerModel}
+        loadedModels={loadedModels}
       />
       {rightOpen && (
         <RightPane

@@ -23,9 +23,9 @@ function SettingsModal({ onClose, statusVisible, setStatusVisible, weaveMode, se
   });
   const [samp, setSamp] = useState({
     temperature: config?.temperature ?? 0.7,
-    top_p: config?.top_p ?? 0.92,
+    top_p: config?.top_p ?? 0.9,
     min_p: config?.min_p ?? 0.05,
-    rep_penalty: config?.rep_penalty ?? 1.12,
+    rep_penalty: config?.rep_penalty ?? 1.1,
     max_tokens: config?.max_tokens ?? 2048,
   });
   const [toolsCfg, setToolsCfg] = useState({
@@ -429,17 +429,51 @@ function ModelPanel({ cfg, setCfg }) {
   );
 }
 
+const SAMPLER_DEFAULTS = { temperature: 0.7, top_p: 0.9, min_p: 0.05, rep_penalty: 1.1, max_tokens: 2048 };
+
+const SAMPLER_PRESETS = [
+  { id: 'balanced',  label: 'Balanced',  values: { temperature: 0.7, top_p: 0.9,  min_p: 0.05,  rep_penalty: 1.1,  max_tokens: 2048 } },
+  { id: 'creative',  label: 'Creative',  values: { temperature: 1.0, top_p: 0.95, min_p: 0.03,  rep_penalty: 1.05, max_tokens: 4096 } },
+  { id: 'precise',   label: 'Precise',   values: { temperature: 0.3, top_p: 0.85, min_p: 0.1,   rep_penalty: 1.15, max_tokens: 2048 } },
+  { id: 'qwen',      label: 'Qwen',      values: { temperature: 0.7, top_p: 0.92, min_p: 0.05,  rep_penalty: 1.12, max_tokens: 2048 } },
+  { id: 'llama',     label: 'Llama',     values: { temperature: 0.6, top_p: 0.9,  min_p: 0.05,  rep_penalty: 1.1,  max_tokens: 2048 } },
+  { id: 'gemma',     label: 'Gemma',     values: { temperature: 0.7, top_p: 0.95, min_p: 0.02,  rep_penalty: 1.0,  max_tokens: 2048 } },
+];
+
+function detectPreset(s) {
+  for (const p of SAMPLER_PRESETS) {
+    if (Object.keys(p.values).every(k => s[k] === p.values[k])) return p.id;
+  }
+  return 'custom';
+}
+
 function SamplerPanel({ samp, setSamp }) {
   const s = samp;
   const set = (k, v) => setSamp({ ...s, [k]: v });
+  const activePreset = detectPreset(s);
   return (
     <>
       <h3>Sampler</h3>
-      <div className="desc">The knobs that shape each generation. Defaults are sensible for Qwen 3.6 35B. Changes take effect on the next message.</div>
+      <div className="desc">The knobs that shape each generation. Pick a preset to start, then fine-tune. Changes take effect on the next message.</div>
+      <div className="setting-row">
+        <div className="setting-label">Preset<span className="hint">Starting points for different models and styles</span></div>
+        <div className="setting-ctrl" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <select className="text-input" value={activePreset} onChange={e => {
+            const p = SAMPLER_PRESETS.find(x => x.id === e.target.value);
+            if (p) setSamp({ ...s, ...p.values });
+          }} style={{ flex: 1 }}>
+            {activePreset === 'custom' && <option value="custom">Custom</option>}
+            {SAMPLER_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+          <button className="iconbtn" onClick={() => setSamp({ ...s, ...SAMPLER_DEFAULTS })} title="Reset to defaults" style={{ flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          </button>
+        </div>
+      </div>
       <SliderRow label="Temperature" hint="Higher = more variety, lower = more deterministic" min={0} max={2} step={0.01} value={s.temperature} onChange={v => set('temperature', v)} fmt={v => v.toFixed(2)} />
       <SliderRow label="Top-p" hint="Nucleus sampling cutoff" min={0} max={1} step={0.01} value={s.top_p} onChange={v => set('top_p', v)} fmt={v => v.toFixed(2)} />
       <SliderRow label="Min-p" hint="Floor for token probability, relative to the top choice" min={0} max={0.5} step={0.005} value={s.min_p} onChange={v => set('min_p', v)} fmt={v => v.toFixed(3)} />
-      <SliderRow label="Repetition penalty" hint="1.0 = off. 1.10\u20131.15 works well on Qwen." min={0.8} max={1.6} step={0.01} value={s.rep_penalty} onChange={v => set('rep_penalty', v)} fmt={v => v.toFixed(2)} />
+      <SliderRow label="Repetition penalty" hint="1.0 = off" min={0.8} max={1.6} step={0.01} value={s.rep_penalty} onChange={v => set('rep_penalty', v)} fmt={v => v.toFixed(2)} />
       <SliderRow label="Max response tokens" hint="Hard cap on a single reply" min={64} max={16384} step={64} value={s.max_tokens} onChange={v => set('max_tokens', v)} fmt={v => v.toLocaleString()} />
     </>
   );
@@ -461,13 +495,22 @@ function SystemPromptPanel({ prompt, setPrompt, dirty, setDirty }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [source, setSource] = useState('');
+  const [presets, setPresets] = useState([]);
+  const [activePresetId, setActivePresetId] = useState('');
+  const [showSaveAs, setShowSaveAs] = useState(false);
+  const [newPresetName, setNewPresetName] = useState('');
+  const [savingPreset, setSavingPreset] = useState(false);
 
   useEffect(() => {
-    API.getSystemPrompt().then(data => {
-      setPrompt(data.content || '');
-      setSource(data.source || '');
-      setDirty(false);
-    }).catch(() => {});
+    Promise.all([API.getSystemPrompt(), API.listPresets()])
+      .then(([data, presetList]) => {
+        setPrompt(data.content || '');
+        setSource(data.source || '');
+        setActivePresetId(data.active_preset_id || '');
+        setPresets(presetList);
+        setDirty(false);
+      })
+      .catch(() => {});
   }, []);
 
   function handleChange(e) {
@@ -483,13 +526,93 @@ function SystemPromptPanel({ prompt, setPrompt, dirty, setDirty }) {
       setDirty(false);
       setSaved(true);
       setSaving(false);
+      if (activePresetId) {
+        setPresets(prev => prev.map(p =>
+          p.id === activePresetId ? { ...p, content: prompt } : p
+        ));
+      }
     }).catch(() => setSaving(false));
+  }
+
+  function handlePresetChange(e) {
+    const id = e.target.value;
+    if (id === activePresetId) return;
+    API.activatePreset(id || null).then(data => {
+      setActivePresetId(id);
+      if (data.content != null) {
+        setPrompt(data.content);
+        setDirty(false);
+        setSaved(false);
+      }
+    }).catch(() => {});
+  }
+
+  function handleSaveAs() {
+    const name = newPresetName.trim();
+    if (!name || savingPreset) return;
+    setSavingPreset(true);
+    API.createPreset(name, prompt).then(preset => {
+      setPresets(prev => [...prev, preset].sort((a, b) => a.name.localeCompare(b.name)));
+      setActivePresetId(preset.id);
+      setShowSaveAs(false);
+      setNewPresetName('');
+      setSavingPreset(false);
+      setDirty(false);
+    }).catch(() => setSavingPreset(false));
+  }
+
+  function handleDeletePreset() {
+    if (!activePresetId) return;
+    const name = presets.find(p => p.id === activePresetId)?.name || 'this preset';
+    if (!confirm('Delete "' + name + '"?')) return;
+    API.deletePreset(activePresetId).then(() => {
+      setPresets(prev => prev.filter(p => p.id !== activePresetId));
+      setActivePresetId('');
+    }).catch(() => {});
   }
 
   return (
     <>
       <h3>System prompt</h3>
-      <div className="desc">This is the instruction prepended to every conversation. It tells the model who it is and how to behave. Edit it directly {'—'} what you write here is exactly what the model sees.</div>
+      <div className="desc">The instruction prepended to every conversation. Save multiple versions as presets and switch between them {'—'} independent of which model is active.</div>
+      <div className="setting-row">
+        <div className="setting-label">Presets<span className="hint">Save and switch between system prompts</span></div>
+        <div className="setting-ctrl">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select className="text-input" value={activePresetId} onChange={handlePresetChange} style={{ flex: 1 }}>
+              <option value="">{'—'} none {'—'}</option>
+              {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            {activePresetId && (
+              <button className="iconbtn" onClick={handleDeletePreset} title="Delete preset" style={{ color: 'var(--ember)', flexShrink: 0 }}>
+                <Icon name="trash" size={14} />
+              </button>
+            )}
+          </div>
+          {showSaveAs ? (
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <input className="text-input" style={{ flex: 1 }} value={newPresetName} onChange={e => setNewPresetName(e.target.value)} placeholder="Preset name…" onKeyDown={e => e.key === 'Enter' && handleSaveAs()} autoFocus />
+              <button className="send-btn" onClick={handleSaveAs} disabled={!newPresetName.trim() || savingPreset} style={{
+                background: newPresetName.trim() ? 'var(--candle)' : 'var(--ink-3)',
+                color: newPresetName.trim() ? 'var(--ink)' : 'var(--fg-faint)',
+                border: 'none', whiteSpace: 'nowrap',
+              }}>
+                {savingPreset ? 'Saving…' : 'Save'}
+              </button>
+              <button className="iconbtn" onClick={() => { setShowSaveAs(false); setNewPresetName(''); }}>
+                <Icon name="close" size={14} />
+              </button>
+            </div>
+          ) : (
+            <button className="send-btn" onClick={() => setShowSaveAs(true)} style={{
+              marginTop: 8, background: 'var(--ink-3)', color: 'var(--fg)',
+              border: '1px solid var(--border-soft)', fontSize: 11.5,
+            }}>
+              Save current as preset
+            </button>
+          )}
+        </div>
+      </div>
       <div className="setting-row">
         <div className="setting-label">Prompt<span className="hint">Markdown. Saved to <span className="mono">{source || 'persona/default.md'}</span></span></div>
         <div className="setting-ctrl">
@@ -581,10 +704,26 @@ function WeaveModePanel({ mode, setMode }) {
 }
 
 function AppearancePanel({ tweaks, setTweaks }) {
+  const [theme, setThemeState] = useState(getTheme);
+
+  function handleTheme(next) {
+    setTheme(next);
+    setThemeState(next);
+  }
+
   return (
     <>
       <h3>Appearance</h3>
-      <div className="desc">Loom is moonlit by default. Two knobs tune the feel {'\u2014'} the accent thread color, and how strongly the grimoire visuals come through.</div>
+      <div className="desc">Two themes {'\u2014'} Moonlight Dusk (dark) and Dawn Loom (light). The accent and arcane knobs work on both.</div>
+      <div className="setting-row">
+        <div className="setting-label">Theme<span className="hint">Switch between dark and light</span></div>
+        <div className="setting-ctrl">
+          <div className="seg">
+            <button className={theme !== 'parchment' ? 'active' : ''} onClick={() => handleTheme('dusk')}>Moonlight Dusk</button>
+            <button className={theme === 'parchment' ? 'active' : ''} onClick={() => handleTheme('parchment')}>Dawn Loom</button>
+          </div>
+        </div>
+      </div>
       <div className="setting-row">
         <div className="setting-label">Accent color<span className="hint">Primary thread color, used throughout</span></div>
         <div className="setting-ctrl">
@@ -603,15 +742,6 @@ function AppearancePanel({ tweaks, setTweaks }) {
         <div className="setting-ctrl slider-row">
           <input type="range" min={0} max={1} step={0.05} value={tweaks.arcane} onChange={e => setTweaks({ ...tweaks, arcane: parseFloat(e.target.value) })} />
           <div className="slider-val">{Math.round(tweaks.arcane * 100)}%</div>
-        </div>
-      </div>
-      <div className="setting-row">
-        <div className="setting-label">Theme<span className="hint">Moonlit only, for now {'\u2014'} a parchment/daylight theme is planned.</span></div>
-        <div className="setting-ctrl">
-          <div className="seg">
-            <button className="active">moonlit · dusk</button>
-            <button style={{ opacity: 0.4, cursor: 'not-allowed' }}>parchment <span style={{ fontSize: 9, color: 'var(--fg-ghost)' }}>(soon)</span></button>
-          </div>
         </div>
       </div>
     </>
