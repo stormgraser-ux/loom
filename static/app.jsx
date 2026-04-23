@@ -88,9 +88,20 @@ function App() {
     refreshWeaves();
     refreshMemories();
     refreshVram();
-    API.getConfig().then(c => { setLoomConfig(c); setThinking(!!c.thinking); setComposerModel(prev => prev || c.model); }).catch(() => {});
-    API.listModels().then(m => setModels(m || [])).catch(() => {});
+    Promise.all([API.getConfig(), API.listModels().catch(() => [])]).then(([c, m]) => {
+      setLoomConfig(c);
+      setThinking(!!c.thinking);
+      const available = m || [];
+      setModels(available);
+      const ids = available.map(x => x.name || x.id);
+      const fallback = ids.includes(c.model) ? c.model : (ids[0] || c.model);
+      setComposerModel(prev => prev || fallback);
+    }).catch(() => {});
   }, []);
+
+  async function refreshModels() {
+    try { const m = await API.listModels(); setModels(m || []); } catch (_) {}
+  }
 
   async function refreshWeaves() {
     try {
@@ -383,6 +394,7 @@ function App() {
 
   function handleSwapModel(modelName) {
     handleSaveConfig({ model: modelName });
+    setComposerModel(modelName);
   }
 
   const displayMemories = useM(
@@ -507,6 +519,7 @@ function App() {
           setTweaks={setTweaks}
           config={loomConfig}
           onSaveConfig={handleSaveConfig}
+          onRefreshModels={refreshModels}
         />
       )}
     </div>

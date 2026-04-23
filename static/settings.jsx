@@ -11,7 +11,7 @@ const SETTINGS_TABS = [
   { id: 'data',     label: 'Data',     icon: 'save' },
 ];
 
-function SettingsModal({ onClose, statusVisible, setStatusVisible, weaveMode, setWeaveMode, tweaks, setTweaks, config, onSaveConfig }) {
+function SettingsModal({ onClose, statusVisible, setStatusVisible, weaveMode, setWeaveMode, tweaks, setTweaks, config, onSaveConfig, onRefreshModels }) {
   const [tab, setTab] = useState('sampler');
 
   const [modelCfg, setModelCfg] = useState({
@@ -85,7 +85,7 @@ function SettingsModal({ onClose, statusVisible, setStatusVisible, weaveMode, se
             ))}
           </div>
           <div className="settings-panel">
-            {tab === 'model' && <ModelPanel cfg={modelCfg} setCfg={setModelCfg} />}
+            {tab === 'model' && <ModelPanel cfg={modelCfg} setCfg={setModelCfg} onRefreshModels={onRefreshModels} />}
             {tab === 'sampler' && <SamplerPanel samp={samp} setSamp={setSamp} />}
             {tab === 'system' && <SystemPromptPanel prompt={systemPrompt} setPrompt={setSystemPrompt} dirty={systemPromptDirty} setDirty={setSystemPromptDirty} />}
             {tab === 'status' && <StatusBuilderPanel visible={statusVisible} setVisible={setStatusVisible} />}
@@ -136,7 +136,7 @@ function OllamaProgress({ status }) {
   );
 }
 
-function ModelPanel({ cfg, setCfg }) {
+function ModelPanel({ cfg, setCfg, onRefreshModels }) {
   const set = (k, v) => setCfg({ ...cfg, [k]: v });
   const [models, setModels] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -190,6 +190,7 @@ function ModelPanel({ cfg, setCfg }) {
         setPullProgress({ status: 'success' });
         setPullName('');
         refreshModels();
+        onRefreshModels?.();
       } else if (evt.status === 'error') {
         setPulling(false);
         setPullProgress({ status: 'error', error: evt.error || 'Unknown error' });
@@ -214,6 +215,7 @@ function ModelPanel({ cfg, setCfg }) {
         setImportName('');
         setImportPath('');
         refreshModels();
+        onRefreshModels?.();
       } else if (evt.status === 'error') {
         setImporting(false);
         setImportProgress({ status: 'error', error: evt.error || 'Unknown error' });

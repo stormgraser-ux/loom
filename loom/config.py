@@ -6,7 +6,7 @@ from pathlib import Path
 @dataclass
 class Config:
     llm_base_url: str = "http://127.0.0.1:11434"
-    model: str = "qwen3:14b"
+    model: str = "qwen3:8b"
     temperature: float = 0.7
     max_tokens: int = 2048
     llm_timeout: float = 120.0
