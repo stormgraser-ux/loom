@@ -134,15 +134,23 @@ fi
 
 step "Checking venv..."
 
-if ! "$PYTHON" -m venv --help &>/dev/null; then
-    warn "venv module missing"
+VENV_OK=0
+tmpvenv=$(mktemp -d)
+if "$PYTHON" -m venv "$tmpvenv" &>/dev/null; then
+    VENV_OK=1
+fi
+rm -rf "$tmpvenv"
+
+if [ "$VENV_OK" -eq 0 ]; then
+    warn "venv module missing or broken (ensurepip not available)"
+    PY_VER=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
     case "$PKG" in
         apt)
-            warn "Installing python3-venv..."
-            install_pkg python3-venv
+            warn "Installing python${PY_VER}-venv..."
+            sudo apt-get install -y "python${PY_VER}-venv"
             ;;
         *)
-            fail "Could not find the venv module. Install python3-venv and re-run."
+            fail "Install python3-venv (or python${PY_VER}-venv) and re-run."
             exit 1
             ;;
     esac
