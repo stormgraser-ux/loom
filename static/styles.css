@@ -394,6 +394,36 @@ input, textarea { font: inherit; color: inherit; background: none; border: none;
 }
 .weave-viewport::-webkit-scrollbar-track { background: transparent; }
 
+.scroll-to-bottom {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--ink-2);
+  color: var(--fg);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.5);
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+}
+.scroll-to-bottom.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+.scroll-to-bottom:hover {
+  background: var(--ink-3);
+  border-color: var(--candle-dim);
+  color: var(--candle);
+  box-shadow: 0 0 12px color-mix(in oklch, var(--candle) 30%, transparent);
+}
+
 .weave-canvas {
   max-width: 860px;
   margin: 0 auto;
@@ -505,6 +535,20 @@ input, textarea { font: inherit; color: inherit; background: none; border: none;
 .msg-content strong { color: var(--vellum); font-weight: 600; }
 .msg-content em { color: var(--candle-bright); font-style: italic; font-family: var(--serif); font-size: 1.05em; letter-spacing: 0.01em; }
 .msg-content code { font-family: var(--mono); font-size: 13px; background: var(--ink-3); padding: 1px 5px; border-radius: 3px; color: var(--candle); border: 1px solid var(--border-soft); }
+
+.msg-content .md-heading { margin: 0 0 10px; color: var(--vellum); font-weight: 600; }
+.msg-content h3.md-heading { font-size: 1.05em; }
+.msg-content h4.md-heading { font-size: 1em; }
+
+.md-table-wrap { overflow-x: auto; margin: 0 0 10px; }
+.md-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.5; }
+.md-table th, .md-table td { padding: 6px 10px; border: 1px solid var(--border-soft); text-align: left; }
+.md-table th { background: var(--ink-3); color: var(--vellum); font-weight: 600; white-space: nowrap; }
+.md-table td { color: var(--fg); }
+.md-table tbody tr:nth-child(even) td { background: color-mix(in oklch, var(--ink-3) 40%, transparent); }
+
+.msg-content .md-list { margin: 0 0 10px; padding-left: 1.5em; }
+.msg-content .md-list li { margin: 0 0 4px; }
 
 /* Drop cap on assistant first message */
 .msg-row.assistant.first .msg-content > p:first-child::first-letter {
@@ -772,6 +816,52 @@ input, textarea { font: inherit; color: inherit; background: none; border: none;
 }
 .composer-tools button:hover { color: var(--fg); background: var(--ink-3); }
 .composer-tools button svg { width: 14px; height: 14px; }
+
+/* ---- Composer image previews ---- */
+.composer-wrap.drag-over { outline: 2px dashed var(--candle); outline-offset: -2px; border-radius: 14px; }
+.drop-overlay {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in oklch, var(--ink) 85%, transparent);
+  border-radius: 14px;
+  font-family: var(--serif); font-size: 15px; color: var(--candle);
+  pointer-events: none;
+}
+.composer-images {
+  display: flex; gap: 8px; padding: 10px 14px 0; flex-wrap: wrap;
+}
+.composer-image-preview {
+  position: relative; width: 64px; height: 64px; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border-soft);
+}
+.composer-image-preview img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.composer-image-remove {
+  position: absolute; top: 2px; right: 2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(0,0,0,0.7); color: #fff;
+  font-size: 12px; line-height: 18px; text-align: center;
+  border: none; cursor: pointer; padding: 0;
+}
+.composer-image-remove:hover { background: rgba(0,0,0,0.9); }
+
+/* ---- Inline images in messages ---- */
+.msg-images {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.msg-image {
+  max-width: 320px; max-height: 320px; border-radius: 10px;
+  border: 1px solid var(--border-soft); object-fit: contain;
+  cursor: pointer;
+}
+.msg-image:hover { border-color: var(--candle-dim); }
+.msg-image-expired {
+  padding: 8px 12px; border-radius: 8px;
+  background: var(--ink-2); border: 1px dashed var(--border-soft);
+  color: var(--fg-ghost); font-family: var(--mono); font-size: 11px;
+  font-style: italic; margin-bottom: 10px;
+}
 
 .composer-right {
   display: flex; align-items: center; gap: 10px;
@@ -1311,6 +1401,35 @@ textarea.text-input { font-family: var(--serif); font-size: 15px; resize: vertic
 }
 .m-weave-scroll::-webkit-scrollbar { display: none; }
 
+.m-scroll-to-bottom {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--ink-2);
+  color: var(--fg);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.5);
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+}
+.m-scroll-to-bottom.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+.m-scroll-to-bottom:active {
+  background: var(--ink-3);
+  border-color: var(--candle-dim);
+  color: var(--candle);
+}
+
 /* ---- Empty state ---- */
 .m-empty-weave {
   height: 100%;
@@ -1470,6 +1589,10 @@ textarea.text-input { font-family: var(--serif); font-size: 15px; resize: vertic
   background: var(--ink-3); padding: 1px 5px; border-radius: 3px;
   color: var(--candle); border: 1px solid var(--border-soft);
 }
+.m-msg-content .md-heading { margin: 0 0 10px; color: var(--vellum); font-weight: 600; }
+.m-msg-content h3.md-heading { font-size: 1.05em; }
+.m-msg-content .md-list { margin: 0 0 10px; padding-left: 1.5em; }
+.m-msg-content .md-list li { margin: 0 0 4px; }
 
 /* Drop cap on first assistant message */
 .m-msg-row.assistant.first .m-msg-content > p:first-child::first-letter {
@@ -1584,12 +1707,16 @@ textarea.text-input { font-family: var(--serif); font-size: 15px; resize: vertic
   position: absolute;
   left: 0; right: 0; bottom: 0;
   padding: 22px 12px calc(10px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, transparent, color-mix(in oklch, var(--ink) 85%, transparent) 35%, var(--ink) 70%);
-  pointer-events: none;
   z-index: 5;
 }
+.m-composer-wrap::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent, color-mix(in oklch, var(--ink) 85%, transparent) 35%, var(--ink) 70%);
+  pointer-events: none;
+  z-index: -1;
+}
 .m-status-strip {
-  pointer-events: auto;
   display: flex; align-items: center; gap: 8px;
   font-family: var(--mono); font-size: 10px;
   color: var(--fg-faint);
@@ -1622,14 +1749,13 @@ textarea.text-input { font-family: var(--serif); font-size: 15px; resize: vertic
   box-shadow: 0 0 4px color-mix(in oklch, var(--candle) 50%, transparent);
 }
 .m-composer {
-  pointer-events: auto;
   border-radius: 12px;
   border: 1px solid var(--border-gold);
   background: linear-gradient(180deg, var(--ink-3), var(--ink-2));
   box-shadow:
     0 10px 40px rgba(0,0,0,0.45),
     inset 0 1px 0 color-mix(in oklch, var(--candle) 10%, transparent);
-  overflow: hidden;
+  overflow: clip;
   position: relative;
 }
 .m-composer::before {
@@ -1666,15 +1792,51 @@ textarea.text-input { font-family: var(--serif); font-size: 15px; resize: vertic
   color: var(--fg-ghost);
   font-style: italic;
 }
+/* ---- Mobile composer image previews ---- */
+.m-composer-images {
+  display: flex; gap: 6px; padding: 8px 12px 0; flex-wrap: wrap;
+}
+.m-composer-image-preview {
+  position: relative; width: 56px; height: 56px; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border-soft);
+}
+.m-composer-image-preview img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.m-composer-image-remove {
+  position: absolute; top: 1px; right: 1px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(0,0,0,0.7); color: #fff;
+  font-size: 12px; line-height: 18px; text-align: center;
+  border: none; cursor: pointer; padding: 0;
+}
+
+/* ---- Mobile inline images ---- */
+.m-msg-images {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.m-msg-image {
+  max-width: 100%; max-height: 280px; border-radius: 10px;
+  border: 1px solid var(--border-soft); object-fit: contain;
+}
+.m-msg-image-expired {
+  padding: 6px 10px; border-radius: 8px;
+  background: var(--ink-2); border: 1px dashed var(--border-soft);
+  color: var(--fg-ghost); font-family: var(--mono); font-size: 11px;
+  font-style: italic; margin-bottom: 8px;
+}
+
 .m-composer-bar {
-  display: flex; align-items: center;
+  display: flex; align-items: center; flex-wrap: nowrap;
   padding: 4px 8px 8px;
   gap: 4px;
 }
+.m-composer-bar .model-picker-wrap { display: none; }
 .m-composer-tools {
   display: flex; align-items: center;
   color: var(--fg-faint);
-  flex: 1;
+  flex: 0 1 auto;
+  overflow: hidden;
 }
 .m-composer-tools button {
   width: 32px; height: 32px;
@@ -1686,13 +1848,16 @@ textarea.text-input { font-family: var(--serif); font-size: 15px; resize: vertic
 .m-composer-tools button svg { width: 15px; height: 15px; }
 .m-think-toggle {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 10px; border-radius: 6px;
+  padding: 5px 8px; border-radius: 6px;
   font-family: var(--mono); font-size: 10.5px;
   color: var(--fg-ghost);
   background: transparent;
   border: 1px solid var(--border-soft);
   letter-spacing: 0.04em;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
+.m-think-toggle span { display: none; }
 .m-think-toggle.on {
   color: var(--candle);
   border-color: color-mix(in oklch, var(--candle) 45%, transparent);
@@ -1709,7 +1874,8 @@ textarea.text-input { font-family: var(--serif); font-size: 15px; resize: vertic
   font-size: 12.5px;
   letter-spacing: 0.04em;
   box-shadow: 0 1px 0 rgba(0,0,0,0.3), inset 0 1px 0 color-mix(in oklch, white 30%, transparent);
-  margin-left: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 .m-send-btn:active { filter: brightness(0.95); transform: translateY(1px); }
 .m-send-btn svg { width: 13px; height: 13px; }
@@ -2258,4 +2424,11 @@ textarea.text-input { font-family: var(--serif); font-size: 15px; resize: vertic
   .app {
     min-width: 800px;
   }
+}
+
+/* ---- Narrow mobile composer adjustments ---- */
+@media (max-width: 540px) {
+  .m-composer-tools > button:not(:first-child) { display: none; }
+  .m-send-btn span { display: none; }
+  .m-send-btn { padding: 8px 10px; }
 }

@@ -139,8 +139,8 @@ function App() {
     setBranchOpen(null);
   }
 
-  function handleSend(message) {
-    if (!message.trim() || streaming) return;
+  function handleSend(message, images) {
+    if ((!message.trim() && !(images && images.length)) || streaming) return;
 
     const sendModel = composerModel || loomConfig?.model;
     const now = Math.floor(Date.now() / 1000);
@@ -154,10 +154,12 @@ function App() {
       if (parentId && nodes[parentId]) {
         nodes[parentId] = { ...nodes[parentId], children: [...nodes[parentId].children, tmpUser] };
       }
-      nodes[tmpUser] = {
+      const userNode = {
         id: tmpUser, parent: parentId, children: [tmpAsst],
         role: 'user', content: message, ts: API.formatTime(now),
       };
+      if (images && images.length) userNode.images = images;
+      nodes[tmpUser] = userNode;
       nodes[tmpAsst] = {
         id: tmpAsst, parent: tmpUser, children: [],
         role: 'assistant', content: [], streaming: true, ts: '',
@@ -186,6 +188,22 @@ function App() {
         case 'start':
           convId = ev.conversation_id;
           if (!activeWeaveIdRef.current) setActiveWeaveId(convId);
+          break;
+
+        case 'image_diag':
+          console.log('[IMG diag]', ev);
+          setTree(prev => {
+            const node = prev.nodes[tmpAsst];
+            if (!node) return prev;
+            const diagLine = `📷 recv:${ev.received} (${ev.sizes_kb.map(k => k + 'KB').join(', ')}) → llm:${ev.in_llm_context}`;
+            return {
+              ...prev,
+              nodes: {
+                ...prev.nodes,
+                [tmpAsst]: { ...node, chipsTool: [...(node.chipsTool || []), diagLine] },
+              },
+            };
+          });
           break;
 
         case 'token':
@@ -248,7 +266,7 @@ function App() {
           });
           break;
       }
-    }, sendModel);
+    }, sendModel, images);
 
     streamRef.current = ctrl;
   }

@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from uuid import uuid4
 
@@ -12,6 +13,7 @@ from loom.persona import build_system_prompt
 from loom.tools import run_tool_calls
 from loom.tools.parser import extract_tool_calls
 
+log = logging.getLogger("loom.images")
 router = APIRouter()
 
 
@@ -19,6 +21,7 @@ class ChatRequest(BaseModel):
     message: str
     conversation_id: str | None = None
     model: str | None = None
+    images: list[str] | None = None
 
 
 class RegenerateRequest(BaseModel):
@@ -59,7 +62,7 @@ async def chat_endpoint(request: Request, body: ChatRequest):
             db.add(conv)
 
         parent_id = chat_data.get("currentId")
-        chat_data["messages"][user_msg_id] = {
+        user_msg = {
             "id": user_msg_id,
             "parentId": parent_id,
             "childrenIds": [],
@@ -67,6 +70,12 @@ async def chat_endpoint(request: Request, body: ChatRequest):
             "content": body.message,
             "timestamp": now,
         }
+        if body.images:
+            user_msg["images"] = body.images
+            sizes = [len(img) for img in body.images]
+            log.info("[IMG:recv] %d image(s), sizes=%s bytes",
+                     len(body.images), sizes)
+        chat_data["messages"][user_msg_id] = user_msg
         if parent_id and parent_id in chat_data["messages"]:
             chat_data["messages"][parent_id]["childrenIds"].append(user_msg_id)
         chat_data["currentId"] = user_msg_id
@@ -74,6 +83,10 @@ async def chat_endpoint(request: Request, body: ChatRequest):
         conv.chat = chat_data
         conv.updated_at = now
         await db.commit()
+
+        stored = chat_data["messages"][user_msg_id].get("images")
+        log.info("[IMG:stored] after first commit: %s",
+                 f"{len(stored)} image(s)" if stored else "no images")
 
     memories = await find_relevant_memories(factory, body.message)
 
@@ -85,11 +98,24 @@ async def chat_endpoint(request: Request, body: ChatRequest):
         system_prompt, chat_data, user_msg_id, config.max_recent_messages
     )
 
+    img_diag = None
+    if body.images:
+        llm_imgs = [m for m in current_messages if m.get("images")]
+        img_diag = {
+            "received": len(body.images),
+            "sizes_kb": [round(len(img) / 1024) for img in body.images],
+            "in_llm_context": sum(len(m["images"]) for m in llm_imgs),
+        }
+        log.info("[IMG:llm] images in LLM payload: %d",
+                 img_diag["in_llm_context"])
+
     async def stream():
         all_content: list[str] = []
         effective_model = body.model or config.model
 
         yield f"data: {json.dumps({'type': 'start', 'conversation_id': conv_id})}\n\n"
+        if img_diag:
+            yield f"data: {json.dumps({'type': 'image_diag', **img_diag})}\n\n"
 
         for round_num in range(config.max_tool_rounds + 1):
             round_content: list[str] = []
@@ -113,6 +139,26 @@ async def chat_endpoint(request: Request, body: ChatRequest):
                 return
 
             content = "".join(round_content)
+
+            if not content.strip() and config.thinking:
+                round_content = []
+                try:
+                    async for msg_type, text in llm.stream_chat(
+                        current_messages, config.temperature, config.max_tokens,
+                        top_p=config.top_p, min_p=config.min_p,
+                        rep_penalty=config.rep_penalty,
+                        thinking=False,
+                        model=body.model,
+                        num_ctx=config.num_ctx,
+                    ):
+                        if msg_type == "content":
+                            round_content.append(text)
+                            yield f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                    return
+                content = "".join(round_content)
+
             all_content.append(content)
 
             tool_calls = extract_tool_calls(content)
@@ -157,11 +203,28 @@ async def chat_endpoint(request: Request, body: ChatRequest):
         chat_data["messages"][user_msg_id]["childrenIds"].append(asst_msg_id)
         chat_data["currentId"] = asst_msg_id
 
+        pre_save_imgs = chat_data["messages"][user_msg_id].get("images")
+        if pre_save_imgs:
+            log.info("[IMG:pre-save] user msg still has %d image(s)",
+                     len(pre_save_imgs))
+        elif img_diag:
+            log.warning("[IMG:pre-save] IMAGES GONE from chat_data before save!")
+
         async with factory() as db:
             conv = await db.get(Chat, conv_id)
             conv.chat = chat_data
             conv.updated_at = asst_now
             await db.commit()
+
+        if img_diag:
+            async with factory() as db:
+                conv = await db.get(Chat, conv_id)
+                db_imgs = (conv.chat.get("messages", {})
+                           .get(user_msg_id, {}).get("images"))
+                img_diag["persisted"] = len(db_imgs) if db_imgs else 0
+                log.info("[IMG:verify] read-back from DB: %s",
+                         f"{len(db_imgs)} image(s)" if db_imgs
+                         else "NONE — IMAGES LOST")
 
         yield f"data: {json.dumps({'type': 'done', 'conversation_id': conv_id, 'message_id': asst_msg_id, 'model': effective_model})}\n\n"
 
@@ -237,6 +300,26 @@ async def regenerate_endpoint(request: Request, body: RegenerateRequest):
                 return
 
             content = "".join(round_content)
+
+            if not content.strip() and config.thinking:
+                round_content = []
+                try:
+                    async for msg_type, text in llm.stream_chat(
+                        current_messages, config.temperature, config.max_tokens,
+                        top_p=config.top_p, min_p=config.min_p,
+                        rep_penalty=config.rep_penalty,
+                        thinking=False,
+                        model=body.model,
+                        num_ctx=config.num_ctx,
+                    ):
+                        if msg_type == "content":
+                            round_content.append(text)
+                            yield f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                    return
+                content = "".join(round_content)
+
             all_content.append(content)
 
             tool_calls = extract_tool_calls(content)

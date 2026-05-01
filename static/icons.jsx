@@ -34,6 +34,7 @@ const ICON_PATHS = {
   save:       <><path d="M3 3h8l2 2v8H3z"/><path d="M5 3v4h6V3M6 10h4"/></>,
   link:       <><path d="M7 9a3 3 0 004 0l2-2a3 3 0 00-4-4L8 4M9 7a3 3 0 00-4 0L3 9a3 3 0 004 4l1-1"/></>,
   dot:        <><circle cx="8" cy="8" r="1.5"/></>,
+  clipboard:  <><rect x="4" y="3.5" width="8" height="10" rx="1"/><path d="M6 3.5V3a2 2 0 014 0v.5"/></>,
   thinking:   <><circle cx="8" cy="8" r="5.5"/><path d="M6 6.5c0-1.1.9-2 2-2s2 .9 2 2c0 .8-.5 1.3-1 1.6s-1 .7-1 1.4"/><circle cx="8" cy="11.5" r=".6" fill="currentColor" stroke="none"/></>,
 };
 

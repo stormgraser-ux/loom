@@ -94,7 +94,7 @@
       const text = typeof node.content === 'string'
         ? node.content
         : node.content.map(p => p.p).join('\n\n');
-      navigator.clipboard.writeText(text).then(() => {
+      copyToClipboard(text).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       });
@@ -117,10 +117,20 @@
             {node.tokps ? ' · ' + (node.tokps.toFixed ? node.tokps.toFixed(1) : node.tokps) + ' tok/s' : ''}
           </span>
         </div>
+        {node.images && node.images.length > 0 && (
+          <div className="m-msg-images">
+            {node.images.map((img, i) => (
+              <img key={i} src={img} className="m-msg-image" alt="attached" />
+            ))}
+          </div>
+        )}
+        {node.imagesExpired && (
+          <div className="m-msg-image-expired">[image — expired]</div>
+        )}
         <div className="m-msg-content">
           {typeof node.content === 'string'
             ? <p>{node.content}</p>
-            : node.content.map((p, i) => <p key={i}>{renderMarkdown(p.p)}</p>)
+            : node.content.map((p, i) => renderBlock(p.p, i))
           }
           {node.streaming && <span className="m-cursor" />}
         </div>
@@ -184,23 +194,41 @@
   // =========================================================
   // MOBILE COMPOSER
   // =========================================================
+  // MOBILE COMPOSER
+  // =========================================================
   function MobileComposer({ onSend, streaming, thinkingDefault, onToggleThinking, config, healthy, streamTokens, streamStart, tree, models, composerModel, onComposerModelChange, loadedModels }) {
-    const [value, setValue] = useState('');
     const ref = useRef(null);
     const wrapRef = useRef(null);
+    const fileRef = useRef(null);
+    const [hasText, setHasText] = useState(false);
+    const [images, setImages] = useState([]);
+
+    function addImage(dataUrl) {
+      setImages(prev => [...prev, dataUrl]);
+    }
+
+    function removeImage(idx) {
+      setImages(prev => prev.filter((_, i) => i !== idx));
+    }
 
     function doSend() {
-      if (!value.trim() || streaming || healthy === false) return;
-      onSend(value);
-      setValue('');
-      if (ref.current) { ref.current.style.height = 'auto'; ref.current.focus(); }
+      var el = ref.current;
+      if (!el) return;
+      var text = el.value.trim();
+      if ((!text && !images.length) || streaming || healthy === false) return;
+      onSend(el.value, images.length ? images : undefined);
+      el.value = '';
+      el.style.height = 'auto';
+      el.focus();
+      setHasText(false);
+      setImages([]);
     }
 
     function handleInput(e) {
-      setValue(e.target.value);
       const el = e.target;
       el.style.height = 'auto';
       el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+      setHasText(!!el.value.trim());
     }
 
     useEffect(() => {
@@ -246,18 +274,35 @@
           </>)}
         </div>
         <div className="m-composer">
+          {images.length > 0 && (
+            <div className="m-composer-images">
+              {images.map((img, i) => (
+                <div key={i} className="m-composer-image-preview">
+                  <img src={img} alt="" />
+                  <button className="m-composer-image-remove" onClick={() => removeImage(i)}>&times;</button>
+                </div>
+              ))}
+            </div>
+          )}
           <textarea
             ref={ref}
             placeholder="Begin a thread…"
-            value={value}
-            onChange={handleInput}
+            onInput={handleInput}
             onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doSend(); } }}
             rows={1}
             disabled={streaming}
           />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => { readFilesAsImages(e.target.files, addImage); e.target.value = ''; }}
+          />
           <div className="m-composer-bar">
             <div className="m-composer-tools">
-              <button title="Attach"><Icon name="attach" /></button>
+              <button title="Attach image" onClick={() => fileRef.current?.click()}><Icon name="attach" /></button>
               <button title="Reference memory"><Icon name="at" /></button>
               <button title="Persona"><Icon name="persona" /></button>
             </div>
@@ -273,7 +318,7 @@
               <Icon name="thinking" />
               <span>think</span>
             </button>
-            <button className={'m-send-btn' + (!value.trim() || streaming || healthy === false ? ' disabled' : '')} onClick={doSend}>
+            <button className={'m-send-btn' + ((!hasText && !images.length) || streaming || healthy === false ? ' disabled' : '')} onClick={doSend}>
               <Icon name="send" />
               <span>{streaming ? 'Weaving…' : 'Weave'}</span>
             </button>
@@ -282,6 +327,7 @@
       </div>
     );
   }
+
 
   // =========================================================
   // MOBILE DRAWER (weaves list)
@@ -666,18 +712,47 @@
     const [settingsOpen, setSettingsOpen] = useState(false);
 
     const scrollRef = useRef(null);
-    const prevPathLen = useRef(0);
+    const isNearBottomRef = useRef(true);
+    const userScrollingRef = useRef(false);
+    const [showScrollBtn, setShowScrollBtn] = useState(false);
+
+    function handleScroll() {
+      var el = scrollRef.current;
+      if (!el) return;
+      var near = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+      isNearBottomRef.current = near;
+      setShowScrollBtn(!near);
+    }
+
+    useEffect(() => {
+      var el = scrollRef.current;
+      if (!el) return;
+      function onTouchStart() { userScrollingRef.current = true; }
+      function onTouchEnd() {
+        userScrollingRef.current = false;
+        handleScroll();
+      }
+      el.addEventListener('touchstart', onTouchStart, { passive: true });
+      el.addEventListener('touchend', onTouchEnd, { passive: true });
+      return () => {
+        el.removeEventListener('touchstart', onTouchStart);
+        el.removeEventListener('touchend', onTouchEnd);
+      };
+    }, []);
 
     useEffect(() => {
       if (!scrollRef.current) return;
-      var el = scrollRef.current;
-      var pathLen = p.tree?.currentPath?.length || 0;
-      var nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
-      if (nearBottom || pathLen > prevPathLen.current) {
-        el.scrollTop = el.scrollHeight;
+      if (userScrollingRef.current) return;
+      if (isNearBottomRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       }
-      prevPathLen.current = pathLen;
     }, [p.tree]);
+
+    function scrollToBottom() {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      }
+    }
 
     useEffect(() => {
       var startX = null, startY = null;
@@ -758,7 +833,7 @@
           onSettingsTap={() => setSettingsOpen(true)}
         />
         <div className="m-weave-area">
-          <div className="m-weave-scroll" ref={scrollRef}>
+          <div className="m-weave-scroll" ref={scrollRef} onScroll={handleScroll}>
             {hasWeave ? (
               <>
                 <div className="m-weave-header">
@@ -792,6 +867,9 @@
               <MobileEmptyState weaves={p.weaves} onSuggestion={p.onSend} />
             )}
           </div>
+          <button className={'m-scroll-to-bottom' + (showScrollBtn ? ' visible' : '')} onClick={scrollToBottom} title="Jump to latest">
+            <Icon name="chevronDown" size={14} />
+          </button>
           <MobileComposer
             onSend={p.onSend}
             streaming={p.streaming}

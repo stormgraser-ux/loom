@@ -1,6 +1,23 @@
 // Loom — seed data for the prototype
 // Tree-structured messages: each has id, parent, children[], role, content, model, ts, tokps, tokens, stop.
 
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(function() { return fallbackCopy(text); });
+  }
+  return fallbackCopy(text);
+}
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  return Promise.resolve();
+}
+
 const SEED_MEMORIES = [
   {
     id: 'm1',

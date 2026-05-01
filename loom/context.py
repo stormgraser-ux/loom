@@ -1,3 +1,14 @@
+import logging
+
+log = logging.getLogger("loom.images")
+
+
+def _strip_data_uri(b64: str) -> str:
+    if "," in b64:
+        return b64.split(",", 1)[1]
+    return b64
+
+
 def build_messages(
     system_prompt: str,
     chat_data: dict,
@@ -13,7 +24,10 @@ def build_messages(
         msg = messages_tree.get(msg_id)
         if not msg:
             break
-        chain.append({"role": msg["role"], "content": msg["content"]})
+        entry = {"role": msg["role"], "content": msg["content"]}
+        if msg.get("images"):
+            entry["images"] = [_strip_data_uri(img) for img in msg["images"]]
+        chain.append(entry)
         msg_id = msg.get("parentId")
     chain.reverse()
 

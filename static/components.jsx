@@ -37,7 +37,7 @@ function getTheme() {
   return document.documentElement.getAttribute('data-theme') || 'dusk';
 }
 
-function renderMarkdown(text) {
+function renderInline(text) {
   const segments = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
   return segments.map((seg, i) => {
     if (seg.startsWith('**') && seg.endsWith('**')) {
@@ -52,6 +52,70 @@ function renderMarkdown(text) {
     return seg;
   });
 }
+
+function renderBlock(text, key) {
+  const lines = text.split('\n');
+  const isHeader = l => /^#{1,6}\s+/.test(l);
+  const isTableRow = l => l.includes('|');
+  const isSeparator = l => /^\|?\s*[-:]+[-|\s:]*$/.test(l);
+  const isListItem = l => /^\s*([-*]|\d+[.)]) /.test(l);
+
+  const groups = [];
+  let cur = { type: 'para', lines: [] };
+  for (const line of lines) {
+    if (!line.trim()) { if (cur.lines.length) { groups.push(cur); cur = { type: 'para', lines: [] }; } continue; }
+    let type = 'para';
+    if (isHeader(line)) type = 'header';
+    else if (isTableRow(line) || isSeparator(line)) type = 'table';
+    else if (isListItem(line)) type = 'list';
+    if (type !== cur.type && cur.lines.length) { groups.push(cur); cur = { type, lines: [] }; }
+    cur.type = type;
+    cur.lines.push(line);
+  }
+  if (cur.lines.length) groups.push(cur);
+
+  if (groups.length === 1 && groups[0].type === 'para') {
+    return <p key={key}>{renderInline(text)}</p>;
+  }
+
+  const parseRow = r => r.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+
+  const els = groups.map((g, gi) => {
+    const k = key + '-' + gi;
+    if (g.type === 'header') {
+      return g.lines.map((l, li) => {
+        const m = l.match(/^(#{1,6})\s+(.+)/);
+        return React.createElement('h' + Math.min(m[1].length, 6), { key: k + '-' + li, className: 'md-heading' }, ...renderInline(m[2]));
+      });
+    }
+    if (g.type === 'table') {
+      const rows = g.lines.filter(l => !isSeparator(l));
+      const hasSep = g.lines.some(isSeparator);
+      const head = hasSep ? rows[0] : null;
+      const body = hasSep ? rows.slice(1) : rows;
+      return (
+        <div key={k} className="md-table-wrap">
+          <table className="md-table">
+            {head && <thead><tr>{parseRow(head).map((c, ci) => <th key={ci}>{renderInline(c)}</th>)}</tr></thead>}
+            <tbody>{body.map((r, ri) => <tr key={ri}>{parseRow(r).map((c, ci) => <td key={ci}>{renderInline(c)}</td>)}</tr>)}</tbody>
+          </table>
+        </div>
+      );
+    }
+    if (g.type === 'list') {
+      return (
+        <ul key={k} className="md-list">
+          {g.lines.map((l, li) => <li key={li}>{renderInline(l.replace(/^\s*([-*]|\d+[.)]) /, ''))}</li>)}
+        </ul>
+      );
+    }
+    return <p key={k}>{renderInline(g.lines.join(' '))}</p>;
+  });
+
+  return <React.Fragment key={key}>{els.flat()}</React.Fragment>;
+}
+
+const renderMarkdown = renderInline;
 
 // ---------- Top bar ----------
 function TopBar({ weave, onToggleLeft, rightOpen, setRightOpen, onOpenSettings, leftCollapsed, onRename }) {
@@ -182,7 +246,7 @@ function MessageRow({ node, isFirst, onFork, onPickSibling, siblingIds, nodes, b
     const text = typeof node.content === 'string'
       ? node.content
       : node.content.map(p => p.p).join('\n\n');
-    navigator.clipboard.writeText(text).then(() => {
+    copyToClipboard(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
@@ -226,12 +290,21 @@ function MessageRow({ node, isFirst, onFork, onPickSibling, siblingIds, nodes, b
           )}
         </div>
 
+        {node.images && node.images.length > 0 && (
+          <div className="msg-images">
+            {node.images.map((img, i) => (
+              <img key={i} src={img} className="msg-image" alt="attached" />
+            ))}
+          </div>
+        )}
+        {node.imagesExpired && (
+          <div className="msg-image-expired">[image — expired]</div>
+        )}
+
         <div className="msg-content">
           {typeof node.content === 'string'
             ? <p>{node.content}</p>
-            : node.content.map((p, i) => (
-                <p key={i}>{renderMarkdown(p.p)}</p>
-              ))}
+            : node.content.map((p, i) => renderBlock(p.p, i))}
           {node.streaming && <span className="cursor" />}
         </div>
 
@@ -419,15 +492,59 @@ function ModelPicker({ models, activeModel, onModelChange, loadedModels }) {
   );
 }
 
+// ---------- Image helpers ----------
+function compressImage(dataUrl, maxDim, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        const scale = maxDim / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+function readFilesAsImages(files, callback) {
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      compressImage(e.target.result, 1536, 0.85).then(callback);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // ---------- Composer ----------
 function Composer({ onSend, streaming, thinkingDefault, onToggleThinking, models, composerModel, onComposerModelChange, loadedModels }) {
   const [value, setValue] = useState('');
+  const [images, setImages] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
   const ref = useRef(null);
+  const fileRef = useRef(null);
+
+  function addImage(dataUrl) {
+    setImages(prev => [...prev, dataUrl]);
+  }
+
+  function removeImage(idx) {
+    setImages(prev => prev.filter((_, i) => i !== idx));
+  }
 
   function doSend() {
-    if (!value.trim() || streaming) return;
-    onSend(value);
+    if ((!value.trim() && !images.length) || streaming) return;
+    onSend(value, images.length ? images : undefined);
     setValue('');
+    setImages([]);
     if (ref.current) ref.current.focus();
   }
 
@@ -435,21 +552,67 @@ function Composer({ onSend, streaming, thinkingDefault, onToggleThinking, models
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doSend(); }
   }
 
+  function handlePaste(e) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) readFilesAsImages([file], addImage);
+        return;
+      }
+    }
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer?.files?.length) {
+      readFilesAsImages(e.dataTransfer.files, addImage);
+    }
+  }
+
   return (
-    <div className="composer-wrap">
+    <div
+      className={'composer-wrap' + (dragOver ? ' drag-over' : '')}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
+      {dragOver && <div className="drop-overlay">Drop image here</div>}
       <div className="composer">
+        {images.length > 0 && (
+          <div className="composer-images">
+            {images.map((img, i) => (
+              <div key={i} className="composer-image-preview">
+                <img src={img} alt="" />
+                <button className="composer-image-remove" onClick={() => removeImage(i)}>&times;</button>
+              </div>
+            ))}
+          </div>
+        )}
         <textarea
           ref={ref}
           placeholder="Begin a thread…"
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           rows={2}
           disabled={streaming}
         />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => { readFilesAsImages(e.target.files, addImage); e.target.value = ''; }}
+        />
         <div className="composer-bar">
           <div className="composer-tools">
-            <button title="Attach file"><Icon name="attach" /></button>
+            <button title="Attach image" onClick={() => fileRef.current?.click()}><Icon name="attach" /></button>
             <button title="Reference a memory"><Icon name="at" /></button>
             <button title="Insert persona instruction"><Icon name="persona" /></button>
             <button title="Sampler override for this turn"><Icon name="sliders" /></button>
@@ -466,17 +629,17 @@ function Composer({ onSend, streaming, thinkingDefault, onToggleThinking, models
             <button
               className={'think-toggle ' + (thinkingDefault ? 'on' : '')}
               onClick={onToggleThinking}
-              title={thinkingDefault ? 'Thinking enabled \u2014 click to disable' : 'Thinking disabled \u2014 click to enable'}
+              title={thinkingDefault ? 'Thinking enabled — click to disable' : 'Thinking disabled — click to enable'}
             >
               <Icon name="thinking" size={13} />
               <span>{thinkingDefault ? 'think' : 'think'}</span>
             </button>
             <span className="composer-hint">
-              <kbd>{'\u2318'}</kbd> + <kbd>{'\u21b5'}</kbd> send {'\u00a0\u00b7\u00a0'} <kbd>{'\u21e7'}</kbd> + <kbd>{'\u21b5'}</kbd> newline
+              <kbd>{'⌘'}</kbd> + <kbd>{'↵'}</kbd> send {' · '} <kbd>{'⇧'}</kbd> + <kbd>{'↵'}</kbd> newline
             </span>
-            <button className="send-btn" onClick={doSend} disabled={streaming || !value.trim()}>
+            <button className="send-btn" onClick={doSend} disabled={streaming || (!value.trim() && !images.length)}>
               <Icon name="send" />
-              <span>{streaming ? 'Weaving\u2026' : 'Weave'}</span>
+              <span>{streaming ? 'Weaving…' : 'Weave'}</span>
             </button>
           </div>
         </div>
@@ -488,6 +651,8 @@ function Composer({ onSend, streaming, thinkingDefault, onToggleThinking, models
 // ---------- Main weave (middle pane) ----------
 function WeaveView({ tree, activeWeave, onFork, onPickSibling, branchOpen, toggleBranch, onSend, streaming, onRegenerate, thinkingDefault, onToggleThinking, weaveMode, models, composerModel, onComposerModelChange, loadedModels }) {
   const viewportRef = useRef(null);
+  const isNearBottomRef = useRef(true);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   const path = tree.currentPath || [];
   const siblingMap = useMemo(() => {
@@ -501,18 +666,32 @@ function WeaveView({ tree, activeWeave, onFork, onPickSibling, branchOpen, toggl
     return m;
   }, [tree, path]);
 
+  function handleScroll() {
+    const el = viewportRef.current;
+    if (!el) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    isNearBottomRef.current = near;
+    setShowScrollBtn(!near);
+  }
+
   useEffect(() => {
-    if (viewportRef.current) {
+    if (viewportRef.current && isNearBottomRef.current) {
       viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
     }
   }, [tree]);
+
+  function scrollToBottom() {
+    if (viewportRef.current) {
+      viewportRef.current.scrollTo({ top: viewportRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  }
 
   const displayed = path.filter(id => tree.nodes[id]?.role !== 'system');
   const msgCount = Object.keys(tree.nodes || {}).length;
 
   return (
     <div className="main">
-      <div className="weave-viewport" ref={viewportRef}>
+      <div className="weave-viewport" ref={viewportRef} onScroll={handleScroll}>
         <div className="weave-canvas">
           {tree.root ? (
             <>
@@ -558,6 +737,9 @@ function WeaveView({ tree, activeWeave, onFork, onPickSibling, branchOpen, toggl
           )}
         </div>
       </div>
+      <button className={'scroll-to-bottom' + (showScrollBtn ? ' visible' : '')} onClick={scrollToBottom} title="Jump to latest">
+        <Icon name="chevronDown" size={14} />
+      </button>
       <Composer onSend={onSend} streaming={streaming} thinkingDefault={thinkingDefault} onToggleThinking={onToggleThinking} models={models} composerModel={composerModel} onComposerModelChange={onComposerModelChange} loadedModels={loadedModels} />
     </div>
   );
@@ -887,5 +1069,5 @@ function StatusBar({ visible, weaveTitle, config, healthy, streaming, streamToke
 Object.assign(window, {
   applyTweaks, TWEAK_DEFAULTS, ACCENTS, STAT_DEFS, setTheme, getTheme,
   TopBar, LeftRail, WeaveView, RightPane, StatusBar, MessageRow, Composer, ModelPicker,
-  ContextBar, MemoriesPanel, ThreadsPanel, ContextPanel, MemoryCard, renderMarkdown,
+  ContextBar, MemoriesPanel, ThreadsPanel, ContextPanel, MemoryCard, renderMarkdown, renderInline, renderBlock, readFilesAsImages,
 });

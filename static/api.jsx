@@ -83,10 +83,11 @@ const API = (() => {
     return controller;
   }
 
-  function sendMessage(message, conversationId, onEvent, model) {
+  function sendMessage(message, conversationId, onEvent, model, images) {
     const body = { message };
     if (conversationId) body.conversation_id = conversationId;
     if (model) body.model = model;
+    if (images && images.length) body.images = images;
     return _streamSSE('/api/chat', body, onEvent);
   }
 
@@ -305,6 +306,8 @@ const API = (() => {
         content,
         model: msg.model || null,
         ts: formatTime(msg.timestamp),
+        images: msg.images || null,
+        imagesExpired: !!msg.images_expired,
       };
 
       if (!msg.parentId) root = id;

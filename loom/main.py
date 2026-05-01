@@ -22,6 +22,27 @@ from loom.persona import clear_cache as clear_persona_cache
 from loom.routers import chat, conversations, memories
 
 
+async def _prune_expired_images(session_factory):
+    """Strip base64 images from messages older than 7 days."""
+    from loom.db import Chat
+
+    cutoff = int(time.time()) - 7 * 86400
+    async with session_factory() as db:
+        result = await db.execute(select(Chat))
+        chats = result.scalars().all()
+        for conv in chats:
+            chat_data = dict(conv.chat)
+            changed = False
+            for msg in chat_data.get("messages", {}).values():
+                if msg.get("images") and msg.get("timestamp", 0) < cutoff:
+                    msg["images"] = None
+                    msg["images_expired"] = True
+                    changed = True
+            if changed:
+                conv.chat = chat_data
+        await db.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     cfg = app.state.config
@@ -32,6 +53,7 @@ async def lifespan(app: FastAPI):
     )
     await init_db(cfg.database_url)
     app.state.session_factory = get_session_factory()
+    await _prune_expired_images(app.state.session_factory)
     yield
     await app.state.llm.close()
 
@@ -43,6 +65,29 @@ def create_app(config_path: str = "config.toml") -> FastAPI:
     app.state.config = cfg
     app.state.config_path = config_path
 
+    class NoCacheStaticMiddleware:
+        def __init__(self, asgi_app):
+            self.app = asgi_app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] != "http":
+                await self.app(scope, receive, send)
+                return
+            path = scope.get("path", "")
+            if not (path == "/" or path.endswith((".html", ".jsx"))):
+                await self.app(scope, receive, send)
+                return
+
+            async def add_header(message):
+                if message["type"] == "http.response.start":
+                    headers = list(message.get("headers", []))
+                    headers.append((b"cache-control", b"no-cache"))
+                    message = {**message, "headers": headers}
+                await send(message)
+
+            await self.app(scope, receive, add_header)
+
+    app.add_middleware(NoCacheStaticMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
